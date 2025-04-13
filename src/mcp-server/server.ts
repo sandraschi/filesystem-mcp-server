@@ -4,11 +4,16 @@ import { config, environment } from '../config/index.js';
 import { ErrorHandler } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { requestContextService } from "../utils/requestContext.js"; // Import the service
+import { registerCopyPathTool } from './tools/copyPath/index.js';
+import { registerCreateDirectoryTool } from './tools/createDirectory/index.js';
+import { registerDeleteDirectoryTool } from './tools/deleteDirectory/index.js';
+import { registerDeleteFileTool } from './tools/deleteFile/index.js';
+import { registerListFilesTool } from './tools/listFiles/index.js'; // Added import
+import { registerMovePathTool } from './tools/movePath/index.js';
 import { registerReadFileTool } from './tools/readFile/index.js';
 import { registerSetFilesystemDefaultTool } from './tools/setFilesystemDefault/index.js';
 import { registerUpdateFileTool } from './tools/updateFile/index.js';
 import { registerWriteFileTool } from './tools/writeFile/index.js';
-// TODO: Import other tool registrations when created
 
 /**
  * Creates, configures, and connects the main MCP server instance.
@@ -56,7 +61,12 @@ export const createMcpServer = async (): Promise<McpServer> => {
     await registerSetFilesystemDefaultTool(server);
     await registerWriteFileTool(server);
     await registerUpdateFileTool(server);
-    // TODO: Add registrations for other filesystem tools here
+    await registerListFilesTool(server);
+    await registerDeleteFileTool(server);
+    await registerDeleteDirectoryTool(server);
+    await registerCreateDirectoryTool(server);
+    await registerMovePathTool(server);
+    await registerCopyPathTool(server);
     logger.info("Resources and tools registration phase complete.", operationContext); // Updated log message
   } catch (registrationError) {
      // ErrorHandler within registration functions should handle specific logging/throwing
