@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
+import { McpError } from '../../../types-global/errors.js';
 import { RequestContext } from '../../../utils/requestContext.js';
 import { serverState } from '../../state.js'; // Import the server state
 

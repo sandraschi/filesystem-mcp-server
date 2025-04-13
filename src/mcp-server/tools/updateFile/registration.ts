@@ -3,12 +3,11 @@ import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
 import { ErrorHandler } from '../../../utils/errorHandler.js';
 import { logger } from '../../../utils/logger.js';
 import { requestContextService } from '../../../utils/requestContext.js';
-import {
-  UpdateFileInput,
-  UpdateFileInputSchema,
-  updateFileLogic,
-} from './updateFileLogic.js';
 import { sanitization } from '../../../utils/sanitization.js';
+import {
+  UpdateFileInputSchema,
+  updateFileLogic
+} from './updateFileLogic.js';
 
 /**
  * Registers the 'update_file' tool with the MCP server.

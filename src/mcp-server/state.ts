@@ -1,8 +1,8 @@
 import path from 'path';
-import { logger } from '../utils/logger.js';
-import { sanitization } from '../utils/sanitization.js';
 import { BaseErrorCode, McpError } from '../types-global/errors.js';
+import { logger } from '../utils/logger.js';
 import { RequestContext } from '../utils/requestContext.js';
+import { sanitization } from '../utils/sanitization.js';
 
 /**
  * Simple in-memory state management for the MCP server session.
@@ -94,7 +94,7 @@ class ServerState {
     // Sanitize the final absolute path (normalize, check for traversal relative to root if applicable, etc.)
     // Since we've ensured it's absolute, allowAbsolute is true.
     try {
-      // We don't enforce a rootDir here as the path could be anywhere the user sets the default to.
+      // We don't enforce a rootDir here as the path could be anywhere the MCP Client LLM Agent sets the default to.
       // The underlying OS permissions will handle access control.
       const sanitizedAbsolutePath = sanitization.sanitizePath(absolutePath, { allowAbsolute: true, toPosix: true });
       logger.debug(`Sanitized resolved path: ${sanitizedAbsolutePath}`, { ...context, originalPath: absolutePath });

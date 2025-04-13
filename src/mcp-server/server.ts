@@ -6,8 +6,8 @@ import { logger } from '../utils/logger.js';
 import { requestContextService } from "../utils/requestContext.js"; // Import the service
 import { registerReadFileTool } from './tools/readFile/index.js';
 import { registerSetFilesystemDefaultTool } from './tools/setFilesystemDefault/index.js';
-import { registerWriteFileTool } from './tools/writeFile/index.js';
 import { registerUpdateFileTool } from './tools/updateFile/index.js';
+import { registerWriteFileTool } from './tools/writeFile/index.js';
 // TODO: Import other tool registrations when created
 
 /**
