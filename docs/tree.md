@@ -1,6 +1,6 @@
 # filesystem-mcp-server - Directory Structure
 
-Generated on: 2025-04-13 02:46:53
+Generated on: 2025-04-13 04:19:44
 
 
 ```
@@ -16,6 +16,30 @@ filesystem-mcp-server
     │   └── index.ts
     ├── mcp-server
     │   ├── tools
+    │   │   ├── copyPath
+    │   │   │   ├── copyPathLogic.ts
+    │   │   │   ├── index.ts
+    │   │   │   └── registration.ts
+    │   │   ├── createDirectory
+    │   │   │   ├── createDirectoryLogic.ts
+    │   │   │   ├── index.ts
+    │   │   │   └── registration.ts
+    │   │   ├── deleteDirectory
+    │   │   │   ├── deleteDirectoryLogic.ts
+    │   │   │   ├── index.ts
+    │   │   │   └── registration.ts
+    │   │   ├── deleteFile
+    │   │   │   ├── deleteFileLogic.ts
+    │   │   │   ├── index.ts
+    │   │   │   └── registration.ts
+    │   │   ├── listFiles
+    │   │   │   ├── index.ts
+    │   │   │   ├── listFilesLogic.ts
+    │   │   │   └── registration.ts
+    │   │   ├── movePath
+    │   │   │   ├── index.ts
+    │   │   │   ├── movePathLogic.ts
+    │   │   │   └── registration.ts
     │   │   ├── readFile
     │   │   │   ├── index.ts
     │   │   │   ├── readFileLogic.ts
