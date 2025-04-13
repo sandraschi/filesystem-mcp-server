@@ -8,9 +8,12 @@ import {
   UpdateFileInputSchema,
   updateFileLogic,
 } from './updateFileLogic.js';
+import { sanitization } from '../../../utils/sanitization.js';
 
 /**
  * Registers the 'update_file' tool with the MCP server.
+ * This tool accepts a JSON object with 'path', 'blocks' (array of {search, replace}),
+ * and optional 'useRegex' and 'replaceAll' flags.
  *
  * @param {McpServer} server - The McpServer instance to register the tool with.
  * @returns {Promise<void>} A promise that resolves when the tool is registered.
@@ -18,18 +21,29 @@ import {
  */
 export const registerUpdateFileTool = async (server: McpServer): Promise<void> => {
   const registrationContext = requestContextService.createRequestContext({ operation: 'RegisterUpdateFileTool' });
-  logger.info("Attempting to register 'update_file' tool", registrationContext);
+  logger.info("Attempting to register 'update_file' tool with JSON input format", registrationContext);
 
   await ErrorHandler.tryCatch(
     async () => {
       server.tool(
         'update_file', // Tool name
-        'Performs targeted search-and-replace operations within an existing file using `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` blocks. Accepts relative or absolute paths (resolved like readFile). File must exist.', // Description
-        UpdateFileInputSchema.shape, // Pass the schema shape
+        'Performs targeted search-and-replace operations within an existing file using an array of {search, replace} blocks. Preferred for smaller, localized changes. For large-scale updates or overwrites, consider using `write_file`. Accepts relative or absolute paths. File must exist. Supports optional `useRegex` (boolean, default false) and `replaceAll` (boolean, default false).', // Emphasized usage guidance
+        UpdateFileInputSchema.shape, // Pass the updated schema shape
         async (params, extra) => {
-          const typedParams = params as UpdateFileInput;
-          const callContext = requestContextService.createRequestContext({ operation: 'UpdateFileToolExecution', parentId: registrationContext.requestId });
-          logger.info(`Executing 'update_file' tool for path: ${typedParams.path}`, callContext);
+          // Validate input using the Zod schema before proceeding
+          const validationResult = UpdateFileInputSchema.safeParse(params);
+          if (!validationResult.success) {
+            // Create a new context for validation error
+            const errorContext = requestContextService.createRequestContext({ operation: 'UpdateFileToolValidation' });
+            logger.error('Invalid input parameters for update_file tool', { ...errorContext, errors: validationResult.error.errors });
+            // Throw McpError for invalid parameters
+            throw new McpError(BaseErrorCode.VALIDATION_ERROR, `Invalid parameters: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}`, errorContext);
+          }
+          const typedParams = validationResult.data; // Use validated data
+
+          // Create a new context for this specific tool execution
+          const callContext = requestContextService.createRequestContext({ operation: 'UpdateFileToolExecution' });
+          logger.info(`Executing 'update_file' tool for path: ${typedParams.path} with ${typedParams.blocks.length} blocks`, callContext);
 
           // ErrorHandler will catch McpErrors thrown by the logic
           const result = await ErrorHandler.tryCatch(
@@ -37,7 +51,13 @@ export const registerUpdateFileTool = async (server: McpServer): Promise<void> =
             {
               operation: 'updateFileLogic',
               context: callContext,
-              input: { path: typedParams.path, diff: '[DIFF REDACTED]' }, // Redact diff content
+              // Sanitize input for logging: keep path, redact block content
+              input: sanitization.sanitizeForLogging({
+                  path: typedParams.path,
+                  blocks: typedParams.blocks.map((_, index) => `[Block ${index + 1} REDACTED]`), // Redact block details
+                  useRegex: typedParams.useRegex,
+                  replaceAll: typedParams.replaceAll,
+              }),
               errorCode: BaseErrorCode.INTERNAL_ERROR,
               rethrow: true
             }
@@ -51,7 +71,7 @@ export const registerUpdateFileTool = async (server: McpServer): Promise<void> =
           };
         }
       );
-      logger.info("'update_file' tool registered successfully", registrationContext);
+      logger.info("'update_file' tool registered successfully with JSON input format", registrationContext);
     },
     {
       operation: 'registerUpdateFileTool',

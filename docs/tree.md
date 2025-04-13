@@ -1,6 +1,6 @@
 # filesystem-mcp-server - Directory Structure
 
-Generated on: 2025-04-13 02:00:27
+Generated on: 2025-04-13 02:22:27
 
 
 ```
@@ -8,7 +8,6 @@ filesystem-mcp-server
 ├── backups
 ├── docs
     └── tree.md
-├── logs
 ├── scripts
     ├── clean.ts
     └── tree.ts
@@ -17,11 +16,24 @@ filesystem-mcp-server
     │   └── index.ts
     ├── mcp-server
     │   ├── tools
-    │   │   └── readFile
+    │   │   ├── readFile
     │   │   │   ├── index.ts
     │   │   │   ├── readFileLogic.ts
     │   │   │   └── registration.ts
-    │   └── server.ts
+    │   │   ├── setFilesystemDefault
+    │   │   │   ├── index.ts
+    │   │   │   ├── registration.ts
+    │   │   │   └── setFilesystemDefaultLogic.ts
+    │   │   ├── updateFile
+    │   │   │   ├── index.ts
+    │   │   │   ├── registration.ts
+    │   │   │   └── updateFileLogic.ts
+    │   │   └── writeFile
+    │   │   │   ├── index.ts
+    │   │   │   ├── registration.ts
+    │   │   │   └── writeFileLogic.ts
+    │   ├── server.ts
+    │   └── state.ts
     ├── types-global
     │   ├── errors.ts
     │   ├── mcp.ts

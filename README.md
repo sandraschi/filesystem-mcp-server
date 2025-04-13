@@ -139,26 +139,6 @@ Core Components:
 
 ## Configuration
 
-### MCP Client Settings & Environment Variables
-
-Add to your MCP client settings (e.g., in VS Code settings or a dedicated configuration file):
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      // Choose a suitable name
-      "command": "node",
-      "args": ["/path/to/filesystem-mcp-server/dist/index.js"],
-      "env": {
-        // Optional: Define a base directory to restrict file operations
-        // "FS_BASE_DIRECTORY": "/path/to/allowed/directory"
-      }
-    }
-  }
-}
-```
-
 ### Environment Variables
 
 - `FS_BASE_DIRECTORY` (Optional): If set, restricts all file operations to paths within this directory. Highly recommended for security.
@@ -177,14 +157,14 @@ npm run tree
 
 ## Tool Documentation
 
-| Tool                       | Description                                                                                                                                                                                            | Input Schema                                                                                                                                                                                                   | Output Schema                                                                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **set_filesystem_default** | Sets a default absolute path for the current session. Relative paths used in other filesystem tools will be resolved against this default. Cleared on server restart.                                  | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Absolute path to set as default" } }, "required": ["path"] }`                                                                 | Success message confirmation                                                                        |
-| **read_file**              | Reads the entire content of a specified file. Accepts relative or absolute paths. Relative paths are resolved against the session default set by `set_filesystem_default`.                             | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file (relative or absolute)" } }, "required": ["path"] }`                                                         | `{ "content": "string" }`                                                                           |
-| **write_file**             | Writes content to a specified file. Creates the file (and necessary directories) if it doesn't exist, or overwrites it if it does. Accepts relative or absolute paths (resolved like `read_file`).     | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "content": { "type": "string", "description": "Content to write" } }, "required": ["path", "content"] }` | `{ "message": "string", "writtenPath": "string", "bytesWritten": number }`                          |
-| **update_file**            | Performs targeted search-and-replace operations within an existing file using `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` blocks. Accepts relative or absolute paths (resolved like `read_file`). | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "diff": { "type": "string", "description": "Search/Replace blocks" } }, "required": ["path", "diff"] }`  | `{ "message": "string", "updatedPath": "string", "blocksApplied": number, "blocksFailed": number }` |
+| Tool                       | Description                                                                                                                                                                                                    | Input Schema                                                                                                                                                                                                                                                                                                                                                                                           | Output Schema                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **set_filesystem_default** | Sets a default absolute path for the current session. Relative paths used in other filesystem tools will be resolved against this default. Cleared on server restart.                                          | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Absolute path to set as default" } }, "required": ["path"] }`                                                                                                                                                                                                                                                         | Success message confirmation                                                                        |
+| **read_file**              | Reads the entire content of a specified file. Accepts relative or absolute paths. Relative paths are resolved against the session default set by `set_filesystem_default`.                                     | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file (relative or absolute)" } }, "required": ["path"] }`                                                                                                                                                                                                                                                 | `{ "content": "string" }`                                                                           |
+| **write_file**             | Writes content to a specified file. Creates the file (and necessary directories) if it doesn't exist, or overwrites it if it does. Accepts relative or absolute paths (resolved like `read_file`).             | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "content": { "type": "string", "description": "Content to write" } }, "required": ["path", "content"] }`                                                                                                                                                                                         | `{ "message": "string", "writtenPath": "string", "bytesWritten": number }`                          |
+| **update_file**            | Performs targeted search-and-replace operations within an existing file using an array of `{search, replace}` blocks. **Preferred for smaller, localized changes. For large-scale updates or overwrites, consider using `write_file`.** Accepts relative or absolute paths. Supports optional `useRegex` and `replaceAll` flags. | `{ "type": "object", "properties": { "path": { "type": "string" }, "blocks": { "type": "array", "items": { "type": "object", "properties": { "search": { "type": "string" }, "replace": { "type": "string" } }, "required": ["search", "replace"] } }, "useRegex": { "type": "boolean", "default": false }, "replaceAll": { "type": "boolean", "default": false } }, "required": ["path", "blocks"] }` | `{ "message": "string", "updatedPath": "string", "blocksApplied": number, "blocksFailed": number }` |
 
-_Note: Input/Output schemas are simplified here. Refer to the tool registration files for the exact JSON Schema definitions._
+_Note: Input/Output schemas are simplified here. Refer to the tool registration files (`src/mcp-server/tools/*/registration.ts`) for the exact Zod/JSON Schema definitions._
 
 ## Development Guidelines
 
