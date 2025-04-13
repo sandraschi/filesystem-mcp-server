@@ -1,7 +1,7 @@
 {
   "name": "@cyanheads/filesystem-mcp-server",
   "version": "1.0.0",
-  "description": "A Model Context Protocol (MCP) server for platform-agnostic file capabilities, including advanced search and replace, and directory tree traversal.",
+  "description": "A Model Context Protocol (MCP) server for platform-agnostic file capabilities, including advanced search and replace, and directory tree traversal",
   "main": "dist/index.js",
   "files": [
     "dist"
@@ -36,7 +36,8 @@
     "search-replace",
     "LLM",
     "AI-integration",
-    "server"
+    "server",
+    "file-system"
   ],
   "author": "Casey Hand @cyanheads",
   "license": "Apache-2.0"
