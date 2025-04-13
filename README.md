@@ -4,202 +4,243 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-^1.9.0-green.svg)](https://modelcontextprotocol.io/)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Status](https://img.shields.io/badge/Status-Development-yellow.svg)]()
+[![Status](https://img.shields.io/badge/Status-Beta-orange.svg)]()
 [![GitHub](https://img.shields.io/github/stars/cyanheads/filesystem-mcp-server?style=social)](https://github.com/cyanheads/filesystem-mcp-server)
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server providing platform-agnostic file system capabilities for AI agents. This server allows MCP clients to read, write, and perform advanced search-and-replace operations on files within a configured environment.
+**Empower your AI agents with robust, platform-agnostic file system capabilities.**
 
-Built upon a robust TypeScript foundation, this server includes production-ready utilities for logging, error handling, and security.
-
-## Features
-
-- **Core File Operations**: Provides tools for reading, writing, and updating file contents.
-- **Advanced Updates**: Includes an `update_file` tool for targeted search-and-replace using a diff-like format.
-- **Security**: Incorporates path sanitization and validation to prevent unauthorized file access.
-- **Robust Utilities**: Leverages a set of reusable utilities for logging, error handling, ID generation, rate limiting, and request context management.
-- **Type Safety**: Strong typing with TypeScript to catch errors at compile time.
-- **Error Handling**: A robust error handling system that categorizes and formats errors consistently.
-
-> **.clinerules**: This repository includes a [.clinerules](.clinerules) file that serves as a developer cheat sheet for your LLM coding agent with quick reference for the codebase patterns, file locations, and code snippets. Remember to keep it updated as you modify the server.
+This [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server provides a secure and reliable interface for AI agents to interact with the local filesystem. It enables reading, writing, updating, and managing files and directories, backed by a production-ready TypeScript foundation featuring comprehensive logging, error handling, and security measures.
 
 ## Table of Contents
 
 - [Overview](#overview)
-  - [What is Model Context Protocol?](#what-is-model-context-protocol)
-  - [Architecture & Components](#architecture--components)
 - [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Usage with MCP Clients](#usage-with-mcp-clients)
+- [Available Tools](#available-tools)
 - [Project Structure](#project-structure)
-- [Tool Documentation](#tool-documentation)
-- [Development Guidelines](#development-guidelines)
-  - [Adding a New Tool](#adding-a-new-tool)
-  - [Adding a New Resource](#adding-a-new-resource)
+- [Development](#development)
 - [License](#license)
 
 ## Overview
 
-### What is Model Context Protocol?
+The Model Context Protocol (MCP) is a standard framework allowing AI models to securely interact with external tools and data sources (resources). This server implements the MCP standard to expose essential filesystem operations as tools, enabling AI agents to:
 
-Model Context Protocol (MCP) is a framework that enables AI systems to interact with external tools and resources. It allows language models to:
+- Read and analyze file contents.
+- Create, modify, or overwrite files.
+- Manage directories and file paths.
+- Perform targeted updates within files.
 
-- Execute **tools** that perform actions and return results
-- Access structured **resources** that provide information
-- Create contextual workflows through standardized interfaces
+Built with TypeScript, the server emphasizes type safety, modularity, and robust error handling, making it suitable for reliable integration into AI workflows.
 
-This server provides essential file system tools for AI agents operating within an MCP environment.
+### Architecture
 
-### Architecture & Components
-
-The server follows a modular architecture designed for clarity and extensibility:
-
-<details>
-<summary>Click to expand architecture diagram</summary>
+The server employs a layered architecture for clarity and maintainability:
 
 ```mermaid
 flowchart TB
     subgraph API["API Layer"]
         direction LR
-        MCP["MCP Protocol"]
-        Val["Validation"]
-        San["Sanitization"]
+        MCP["MCP Protocol Interface"]
+        Val["Input Validation (Zod)"]
+        San["Path Sanitization"]
 
         MCP --> Val --> San
     end
 
-    subgraph Core["Core Components"]
+    subgraph Core["Core Services"]
         direction LR
         Config["Configuration"]
-        Logger["Logging System"]
+        Logger["Logging (Winston)"]
         Error["Error Handling"]
-        Server["MCP Server"]
+        Server["MCP Server Logic"]
+        State["Session State"]
 
         Config --> Server
-        Logger --> Server
+        Logger --> Server & Error
         Error --> Server
+        State --> Server
     end
 
-    subgraph Implementation["Implementation Layer"]
+    subgraph Implementation["Tool Implementation"]
         direction LR
-        Tool["Tools (read, write, update)"]
-        Util["Utilities"]
+        ToolLogic["Filesystem Tools"]
+        Utils["Core Utilities"]
 
-        Tool --> Server
-        Util --> Tool
+        ToolLogic --> Server
+        Utils -- Used by --> ToolLogic
+        Utils -- Used by --> Core
     end
 
-    San --> Config
-    San --> Server
+    San --> ToolLogic
 
     classDef layer fill:#2d3748,stroke:#4299e1,stroke-width:3px,rx:5,color:#fff
     classDef component fill:#1a202c,stroke:#a0aec0,stroke-width:2px,rx:3,color:#fff
     class API,Core,Implementation layer
-    class MCP,Val,San,Config,Logger,Error,Server,Tool,Util component
+    class MCP,Val,San,Config,Logger,Error,Server,State,ToolLogic,Utils component
 ```
 
-</details>
+- **API Layer**: Handles MCP communication, validates inputs using Zod, and sanitizes paths.
+- **Core Services**: Manages configuration, logging, error reporting, session state (like the default working directory), and the main MCP server instance.
+- **Tool Implementation**: Contains the specific logic for each filesystem tool, leveraging shared utilities.
 
-Core Components:
+## Features
 
-- **Configuration System**: Environment-aware configuration with validation.
-- **Logging System**: Structured logging with sensitive data redaction.
-- **Error Handling**: Centralized error processing with consistent patterns.
-- **MCP Server**: Protocol implementation for tools.
-- **Validation & Sanitization Layer**: Input validation and path sanitization using `validator` and custom logic.
-- **Utilities**: Reusable utility functions for common operations.
+- **Comprehensive File Operations**: Tools for reading, writing, listing, deleting, moving, and copying files and directories.
+- **Targeted Updates**: `update_file` tool allows precise search-and-replace operations within files, supporting plain text and regex.
+- **Session-Aware Path Management**: `set_filesystem_default` tool establishes a default working directory for resolving relative paths during a session.
+- **Security First**: Built-in path sanitization prevents directory traversal attacks. Optional base directory restriction enhances security.
+- **Robust Foundation**: Includes production-grade utilities for:
+  - Structured, context-aware logging.
+  - Standardized error handling with specific error codes.
+  - Unique ID generation for request tracing.
+  - Input sanitization.
+  - Optional rate limiting (util file created but not yet integrated).
+- **Type Safety**: Fully implemented in TypeScript for improved reliability and maintainability.
 
 ## Installation
 
-### Prerequisites
+### Steps
 
-- [Node.js (v18+)](https://nodejs.org/)
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-
-### Setup
-
-1. Clone this repository:
-
-   ```bash
-   # Replace with the actual repository URL when available
-   git clone https://github.com/cyanheads/filesystem-mcp-server.git
-   cd filesystem-mcp-server
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Build the project:
-
-   ```bash
-   npm run build
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/cyanheads/filesystem-mcp-server.git
+    cd filesystem-mcp-server
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Build the project:**
+    ```bash
+    npm run build
+    ```
+    This compiles the TypeScript code to JavaScript in the `dist/` directory and makes the main script executable. The executable will be located at `dist/index.js`.
 
 ## Configuration
 
-### Environment Variables
+Configure the server using environment variables:
 
-- `FS_BASE_DIRECTORY` (Optional): If set, restricts all file operations to paths within this directory. Highly recommended for security.
-- `LOG_LEVEL` (Optional): Sets the logging level (e.g., `debug`, `info`, `warn`, `error`). Defaults to `info`.
-- `LOG_DIR` (Optional): Specifies the directory for log files. Defaults to `./logs`.
+- **`FS_BASE_DIRECTORY`** (Optional, **Recommended for Security**):
+  - If set to an absolute path, all file operations performed by the server will be strictly confined within this directory and its subdirectories. This prevents the AI agent from accessing files outside the intended scope.
+  - Example: `FS_BASE_DIRECTORY=/Users/casey/safe-agent-files`
+- **`LOG_LEVEL`** (Optional):
+  - Controls the verbosity of logs. Options: `error`, `warn`, `info`, `http`, `verbose`, `debug`, `silly`.
+  - Defaults to `info`.
+- **`LOG_DIR`** (Optional):
+  - Specifies the directory where log files (`combined.log`, `error.log`) will be stored.
+  - Defaults to `./logs` relative to the server's execution directory.
+
+## Usage with MCP Clients
+
+To allow an MCP client (like an AI assistant) to use this server:
+
+1.  **Run the Server:** Start the server from your terminal:
+    ```bash
+    node dist/index.js
+    # Or if you are in the project root:
+    # npm start
+    ```
+2.  **Configure the Client:** Add the server to your MCP client's configuration. The exact method depends on the client, but typically involves specifying:
+
+    - **Command:** `node`
+    - **Arguments:** The absolute path to the built server executable (e.g., `/path/to/filesystem-mcp-server/dist/index.js`).
+    - **Environment Variables (Optional):** Set `FS_BASE_DIRECTORY`, `LOG_LEVEL`, or `LOG_DIR` as needed.
+
+    **Example MCP Settings (Conceptual):**
+
+    ```json
+    {
+      "mcpServers": {
+        "filesystem": {
+          "command": "node",
+          "args": ["/path/to/filesystem-mcp-server/dist/index.js"],
+          "env": {
+            "FS_BASE_DIRECTORY": "/path/to/base/directory",
+            "LOG_LEVEL": "debug"
+          },
+          "disabled": false,
+          "autoApprove": []
+        }
+        // ... other servers
+      }
+    }
+    ```
+
+Once configured and running, the client will detect the server and its available tools.
+
+## Available Tools
+
+The server exposes the following tools for filesystem interaction:
+
+| Tool                         | Description                                                                                                                                                                                                                                                                                                        |
+| :--------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`set_filesystem_default`** | Sets a default absolute path for the current session. Relative paths used in subsequent tool calls will be resolved against this default. Resets on server restart.                                                                                                                                                |
+| **`read_file`**              | Reads the entire content of a specified file as UTF-8 text. Accepts relative (resolved against default) or absolute paths.                                                                                                                                                                                         |
+| **`write_file`**             | Writes content to a specified file. Creates the file (and necessary parent directories) if it doesn't exist, or overwrites it if it does. Accepts relative or absolute paths.                                                                                                                                      |
+| **`update_file`**            | Performs targeted search-and-replace operations within an existing file using an array of `{search, replace}` blocks. Ideal for localized changes. Supports plain text or regex search (`useRegex: true`) and replacing all occurrences (`replaceAll: true`). Accepts relative or absolute paths. File must exist. |
+| **`list_files`**             | Lists files and directories within a specified path. Options include recursive listing (`includeNested: true`) and limiting the number of entries (`maxEntries`). Returns a formatted tree structure. Accepts relative or absolute paths.                                                                          |
+| **`delete_file`**            | Permanently removes a specific file. Accepts relative or absolute paths.                                                                                                                                                                                                                                           |
+| **`delete_directory`**       | Permanently removes a directory. Use `recursive: true` to remove non-empty directories and their contents (use with caution!). Accepts relative or absolute paths.                                                                                                                                                 |
+| **`create_directory`**       | Creates a new directory at the specified path. By default (`create_parents: true`), it also creates any necessary parent directories. Accepts relative or absolute paths.                                                                                                                                          |
+| **`move_path`**              | Moves or renames a file or directory from a source path to a destination path. Accepts relative or absolute paths for both.                                                                                                                                                                                        |
+| **`copy_path`**              | Copies a file or directory from a source path to a destination path. For directories, it copies recursively by default (`recursive: true`). Accepts relative or absolute paths.                                                                                                                                    |
+
+_Refer to the tool registration files (`src/mcp-server/tools/*/registration.ts`) for detailed input/output schemas (Zod/JSON Schema)._
 
 ## Project Structure
 
-The codebase follows a modular structure within the `src/` directory, including configurations (`config/`), MCP server logic (`mcp-server/` with tools), global types (`types-global/`), and common utilities (`utils/`).
+The codebase is organized for clarity and maintainability:
 
-For a detailed, up-to-date view of the project structure, run:
-
-```bash
-npm run tree
+```
+filesystem-mcp-server/
+├── dist/                 # Compiled JavaScript output (after npm run build)
+├── logs/                 # Log files (created at runtime)
+├── node_modules/         # Project dependencies
+├── src/                  # TypeScript source code
+│   ├── config/           # Configuration loading (index.ts)
+│   ├── mcp-server/       # Core MCP server logic
+│   │   ├── server.ts     # Server initialization and tool registration
+│   │   ├── state.ts      # Session state management (e.g., default path)
+│   │   └── tools/        # Individual tool implementations (one subdir per tool)
+│   │       ├── readFile/
+│   │       │   ├── index.ts
+│   │       │   ├── readFileLogic.ts
+│   │       │   └── registration.ts
+│   │       └── ...       # Other tools (writeFile, updateFile, etc.)
+│   ├── types-global/     # Shared TypeScript types and interfaces
+│   │   ├── errors.ts     # Custom error classes and codes
+│   │   ├── mcp.ts        # MCP related types
+│   │   └── tool.ts       # Tool definition types
+│   ├── utils/            # Reusable utility modules
+│   │   ├── errorHandler.ts
+│   │   ├── idGenerator.ts
+│   │   ├── index.ts
+│   │   ├── logger.ts
+│   │   ├── rateLimiter.ts
+│   │   ├── requestContext.ts
+│   │   └── sanitization.ts
+│   └── index.ts          # Main application entry point
+├── .clinerules           # Cheatsheet for LLM assistants
+├── .gitignore
+├── LICENSE
+├── package.json
+├── package-lock.json
+├── README.md             # This file
+└── tsconfig.json         # TypeScript compiler options
 ```
 
-## Tool Documentation
+For a live, detailed view of the current structure, run: `npm run tree`
 
-| Tool                       | Description                                                                                                                                                                                                                                                                                                                      | Input Schema                                                                                                                                                                                                                                                                                                                                                                                           | Output Schema                                                                                       |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| **set_filesystem_default** | Sets a default absolute path for the current session. Relative paths used in other filesystem tools will be resolved against this default. Cleared on server restart.                                                                                                                                                            | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Absolute path to set as default" } }, "required": ["path"] }`                                                                                                                                                                                                                                                         | Success message confirmation                                                                        |
-| **read_file**              | Reads the entire content of a specified file. Accepts relative or absolute paths. Relative paths are resolved against the session default set by `set_filesystem_default`.                                                                                                                                                       | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file (relative or absolute)" } }, "required": ["path"] }`                                                                                                                                                                                                                                                 | `{ "content": "string" }`                                                                           |
-| **write_file**             | Writes content to a specified file. Creates the file (and necessary directories) if it doesn't exist, or overwrites it if it does. Accepts relative or absolute paths (resolved like `read_file`).                                                                                                                               | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "content": { "type": "string", "description": "Content to write" } }, "required": ["path", "content"] }`                                                                                                                                                                                         | `{ "message": "string", "writtenPath": "string", "bytesWritten": number }`                          |
-| **update_file**            | Performs targeted search-and-replace operations within an existing file using an array of `{search, replace}` blocks. **Preferred for smaller, localized changes. For large-scale updates or overwrites, consider using `write_file`.** Accepts relative or absolute paths. Supports optional `useRegex` and `replaceAll` flags. | `{ "type": "object", "properties": { "path": { "type": "string" }, "blocks": { "type": "array", "items": { "type": "object", "properties": { "search": { "type": "string" }, "replace": { "type": "string" } }, "required": ["search", "replace"] } }, "useRegex": { "type": "boolean", "default": false }, "replaceAll": { "type": "boolean", "default": false } }, "required": ["path", "blocks"] }` | `{ "message": "string", "updatedPath": "string", "blocksApplied": number, "blocksFailed": number }` |
-| **list_files**             | Lists files and directories within the specified directory. Optionally lists recursively and returns a tree-like structure. Includes an optional `maxEntries` parameter (default 50) to limit the number of items returned.                                                                                             | `{ "type": "object", "properties": { "path": { "type": "string" }, "includeNested": { "type": "boolean", "default": false }, "maxEntries": { "type": "number", "default": 50 } }, "required": ["path"] }`                                                                                                                                                                                          | `{ "content": [{ "type": "text", "text": "string (formatted tree)" }] }`                             |
-| **delete_file**            | Removes a specific file. Accepts relative or absolute paths.                                                                                                                                                                                                                                                                   | `{ "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }`                                                                                                                                                                                                                                                                                                         | `{ "message": "string", "deletedPath": "string" }`                                                  |
-| **delete_directory**       | Removes a directory. Optionally removes recursively. Accepts relative or absolute paths.                                                                                                                                                                                                                                         | `{ "type": "object", "properties": { "path": { "type": "string" }, "recursive": { "type": "boolean", "default": false } }, "required": ["path"] }`                                                                                                                                                                                                                                               | `{ "message": "string", "deletedPath": "string", "wasRecursive": boolean }`                         |
-| **create_directory**       | Creates a directory. Optionally creates parent directories. Accepts relative or absolute paths.                                                                                                                                                                                                                                  | `{ "type": "object", "properties": { "path": { "type": "string" }, "create_parents": { "type": "boolean", "default": true } }, "required": ["path"] }`                                                                                                                                                                                                                                          | `{ "message": "string", "createdPath": "string", "parentsCreated": boolean }`                       |
-| **move_path**              | Moves or renames a file or directory. Accepts relative or absolute paths for source and destination.                                                                                                                                                                                                                             | `{ "type": "object", "properties": { "source_path": { "type": "string" }, "destination_path": { "type": "string" } }, "required": ["source_path", "destination_path"] }`                                                                                                                                                                                                                         | `{ "message": "string", "sourcePath": "string", "destinationPath": "string" }`                      |
-| **copy_path**              | Copies a file or directory to a new location. Accepts relative or absolute paths. Defaults to recursive copy for directories.                                                                                                                                                                                                  | `{ "type": "object", "properties": { "source_path": { "type": "string" }, "destination_path": { "type": "string" }, "recursive": { "type": "boolean", "default": true } }, "required": ["source_path", "destination_path"] }`                                                                                                                                                                      | `{ "message": "string", "sourcePath": "string", "destinationPath": "string", "wasRecursive": "boolean | null" }` |
-
-_Note: Input/Output schemas are simplified here. Refer to the tool registration files (`src/mcp-server/tools/*/registration.ts`) for the exact Zod/JSON Schema definitions._
-
-## Development Guidelines
-
-### Adding a New Tool
-
-1.  **Create Directory**: `src/mcp-server/tools/myNewTool/`
-2.  **Define Logic & Schema**: `myNewToolLogic.ts` (Input/Output types, validation schema, core function).
-3.  **Implement Registration**: `registration.ts` (Import logic, schema, `McpServer`, `ErrorHandler`. Use `server.tool()` wrapped in `ErrorHandler.tryCatch`).
-4.  **Export Registration**: `index.ts` (Export registration function).
-5.  **Register in Server**: `src/mcp-server/server.ts` (Import and call registration function).
-
-### Adding a New Resource
-
-(While this server focuses on tools, the process remains similar if resources are needed later.)
-
-1.  **Create Directory**: `src/mcp-server/resources/myNewResource/`
-2.  **Define Logic & Schema**: `myNewResourceLogic.ts` (Params type, query schema, core function).
-3.  **Implement Registration**: `registration.ts` (Import logic, schema, `McpServer`, `ResourceTemplate`, `ErrorHandler`. Define `ResourceTemplate`. Use `server.resource()` wrapped in `ErrorHandler.tryCatch`).
-4.  **Export Registration**: `index.ts` (Export registration function).
-5.  **Register in Server**: `src/mcp-server/server.ts` (Import and call registration function).
+> **Developer Note:** This repository includes a [.clinerules](.clinerules) file. This cheat sheet provides your LLM coding assistant with essential context about codebase patterns, file locations, and usage examples. Keep it updated as the server evolves!
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-The code is provided "as is" without warranty of any kind. Use at your own risk.
-If you use this code in your own projects, please consider giving credit to the original authors.
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
-Built with the <a href="https://modelcontextprotocol.io/">Model Context Protocol</a>
+Built with ❤️ and the <a href="https://modelcontextprotocol.io/">Model Context Protocol</a>
 </div>
