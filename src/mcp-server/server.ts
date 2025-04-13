@@ -4,8 +4,8 @@ import { config, environment } from '../config/index.js';
 import { ErrorHandler } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { requestContextService } from "../utils/requestContext.js"; // Import the service
-import { registerEchoResource } from './resources/echoResource/index.js';
-import { registerEchoTool } from './tools/echoTool/index.js';
+import { registerReadFileTool } from './tools/readFile/index.js';
+// TODO: Import other tool registrations when created
 
 /**
  * Creates, configures, and connects the main MCP server instance.
@@ -49,11 +49,11 @@ export const createMcpServer = async (): Promise<McpServer> => {
   try {
     logger.info("Registering resources and tools...", operationContext);
     // Pass the McpServer instance to the registration functions
-    await registerEchoResource(server);
-    logger.debug("Echo resource registered.", operationContext);
-    await registerEchoTool(server);
-    logger.debug("Echo tool registered.", operationContext);
-    logger.info("Resources and tools registered successfully.", operationContext);
+    await registerReadFileTool(server);
+    // TODO: Add registrations for other filesystem tools here
+    // await registerWriteFileTool(server);
+    // await registerUpdateFileTool(server);
+    logger.info("Resources and tools registration phase complete.", operationContext); // Updated log message
   } catch (registrationError) {
      // ErrorHandler within registration functions should handle specific logging/throwing
      // This catch block handles unexpected errors during the registration process itself
