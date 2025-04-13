@@ -153,34 +153,70 @@ const safeLogData = sanitization.sanitizeForLogging(sensitiveData);
 - **Key Files**:
   - `src/utils/sanitization.ts`: `Sanitization` class and `sanitization` instance.
 
+### 6. Rate Limiting (`src/utils/rateLimiter.ts`)
+
+- **Purpose**: Control the frequency of operations, typically API calls or resource-intensive tasks.
+- **Usage**: Import `rateLimiter` instance. Use `rateLimiter.execute(key, async () => { ... })`.
+
+```typescript
+import { rateLimiter } from './src/utils/rateLimiter.js';
+import { RequestContext } from './src/utils/requestContext.js';
+
+async function processApiCall(userId: string, context: RequestContext) {
+  try {
+    const result = await rateLimiter.execute(
+      `api_call_${userId}`, // Unique key for the rate limit bucket
+      async () => {
+        // ... perform the actual API call or operation ...
+        return await externalApiService.getData(userId);
+      },
+      context // Pass context for logging
+    );
+    // Handle successful result
+  } catch (error) {
+    // Handle rate limit exceeded error (McpError with BaseErrorCode.RATE_LIMIT_EXCEEDED)
+    // or other errors from the operation itself.
+    if (error instanceof McpError && error.code === BaseErrorCode.RATE_LIMIT_EXCEEDED) {
+      logger.warn("Rate limit exceeded", { ...context, userId });
+    } else {
+      logger.error("Error during rate-limited operation", { ...context, error });
+    }
+  }
+}
+```
+
+- **Key Files**:
+  - `src/utils/rateLimiter.ts`: `RateLimiter` class and `rateLimiter` instance.
+
 ## Adding New Features
 
 ### Adding a Tool
 
 1.  **Directory**: `src/mcp-server/tools/yourToolName/`
-2.  **Logic (`logic.ts`)**: Define input/output types, validation schema (Zod recommended), and core processing function.
+2.  **Logic (`logic.ts` or similar)**: Define input/output types, validation schema (Zod recommended), and core processing function.
 3.  **Registration (`registration.ts`)**: Import logic, schema shape, `McpServer`, `ErrorHandler`. Use `server.tool(name, schemaShape, async handler => { ... })`. Wrap handler logic and registration in `ErrorHandler.tryCatch`.
 4.  **Index (`index.ts`)**: Export registration function.
 5.  **Server (`src/mcp-server/server.ts`)**: Import and call registration function.
 
 ### Adding a Resource
 
+*(Note: Resources are less common than tools in this template, prefer tools where possible)*
 1.  **Directory**: `src/mcp-server/resources/yourResourceName/`
-2.  **Logic (`logic.ts`)**: Define params type, query schema (if needed), and core processing function (takes `uri: URL`, `params`).
+2.  **Logic (`logic.ts` or similar)**: Define params type, query schema (if needed), and core processing function (takes `uri: URL`, `params`).
 3.  **Registration (`registration.ts`)**: Import logic, schema, `McpServer`, `ResourceTemplate`, `ErrorHandler`. Define `ResourceTemplate`. Use `server.resource(regName, template, metadata, async handler => { ... })`. Wrap handler logic and registration in `ErrorHandler.tryCatch`.
 4.  **Index (`index.ts`)**: Export registration function.
 5.  **Server (`src/mcp-server/server.ts`)**: Import and call registration function.
 
 ## Key File Locations
 
-- **Main Entry**: `src/index.ts` (Initializes server)
+- **Main Entry**: `src/index.ts` (Initializes server, handles startup/shutdown)
 - **Server Setup**: `src/mcp-server/server.ts` (Registers tools/resources)
 - **Configuration**: `src/config/index.ts` (Loads env vars, package info)
-- **Global Types**: `src/types-global/`
-- **Utilities**: `src/utils/`
-- **Tools**: `src/mcp-server/tools/`
-- **Resources**: `src/mcp-server/resources/`
-- **Client Config**: `src/mcp-client/mcp-config.json` (Example, used for client connections)
+- **Global Types**: `src/types-global/` (e.g., `errors.ts`, `mcp.ts`)
+- **Utilities**: `src/utils/` (e.g., `logger.ts`, `errorHandler.ts`, `rateLimiter.ts`)
+- **Tools**: `src/mcp-server/tools/` (e.g., `src/mcp-server/tools/readFile/`)
+- **Resources**: `src/mcp-server/resources/` (Currently none implemented)
 
 Remember to keep this cheatsheet updated as the codebase evolves!
 ```
+</write_to_file>
