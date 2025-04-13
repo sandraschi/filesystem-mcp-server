@@ -53,24 +53,28 @@ export const createMcpServer = async (): Promise<McpServer> => {
   );
   logger.debug("McpServer instance created.", { ...operationContext, serverName: config.mcpServerName });
 
-  // Register resources and tools using their dedicated functions
+  // Register resources and tools using their dedicated functions in parallel
   try {
-    logger.info("Registering resources and tools...", operationContext);
-    // Pass the McpServer instance to the registration functions
-    await registerReadFileTool(server);
-    await registerSetFilesystemDefaultTool(server);
-    await registerWriteFileTool(server);
-    await registerUpdateFileTool(server);
-    await registerListFilesTool(server);
-    await registerDeleteFileTool(server);
-    await registerDeleteDirectoryTool(server);
-    await registerCreateDirectoryTool(server);
-    await registerMovePathTool(server);
-    await registerCopyPathTool(server);
-    logger.info("Resources and tools registration phase complete.", operationContext); // Updated log message
+    logger.info("Registering resources and tools in parallel...", operationContext);
+    const registrationPromises = [
+      registerReadFileTool(server),
+      registerSetFilesystemDefaultTool(server),
+      registerWriteFileTool(server),
+      registerUpdateFileTool(server),
+      registerListFilesTool(server),
+      registerDeleteFileTool(server),
+      registerDeleteDirectoryTool(server),
+      registerCreateDirectoryTool(server),
+      registerMovePathTool(server),
+      registerCopyPathTool(server)
+    ];
+
+    await Promise.all(registrationPromises);
+
+    logger.info("All resources and tools registered successfully.", operationContext);
   } catch (registrationError) {
-     // ErrorHandler within registration functions should handle specific logging/throwing
-     // This catch block handles unexpected errors during the registration process itself
+     // ErrorHandler within individual registration functions should handle specific logging/throwing
+     // This catch block handles errors from Promise.all (e.g., if one registration fails critically)
      logger.error("Critical error during resource/tool registration process", {
         ...operationContext,
         error: registrationError instanceof Error ? registrationError.message : String(registrationError),

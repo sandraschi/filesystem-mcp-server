@@ -33,6 +33,7 @@ interface DirectoryItem {
   name: string;
   isDirectory: boolean;
   children?: DirectoryItem[]; // Only populated if includeNested is true
+  error?: string; // Added to indicate read errors for this directory
 }
 
 /**
@@ -95,10 +96,12 @@ const readDirectoryRecursive = async (
       } catch (recursiveError) {
          // Log the error from the recursive call but continue processing other entries
          logger.error(`Error reading nested directory ${itemPath}`, { ...context, error: (recursiveError as Error).message, code: (recursiveError as McpError).code });
-         // Optionally, represent the error in the tree? For now, just skip children.
-         item.children = []; // Indicate error by empty children or a specific marker if needed
+         // Log the error and mark the item
+         const errorMessage = (recursiveError as McpError)?.message || (recursiveError as Error)?.message || 'Unknown error reading directory';
+         logger.error(`Error reading nested directory ${itemPath}`, { ...context, error: errorMessage, code: (recursiveError as McpError)?.code });
+         item.error = errorMessage; // Store the error message on the item
+         item.children = undefined; // Ensure no children are processed or displayed for errored directories
       }
-      // No need to add children count here, it's handled within the recursive call
     }
     items.push(item);
 
@@ -132,13 +135,18 @@ const formatTree = (items: DirectoryItem[], truncated: boolean, prefix = ''): st
   items.forEach((item, index) => {
     const isLast = index === items.length - 1;
     const connector = isLast ? '└── ' : '├── ';
-    const itemPrefix = item.isDirectory ? '📁 ' : '📄 '; // Simple emoji indicators
-    treeString += `${prefix}${connector}${itemPrefix}${item.name}\n`;
+    const itemPrefix = item.isDirectory ? '📁 ' : '📄 ';
+    const errorMarker = item.error ? ` [Error: ${item.error}]` : ''; // Add error marker if present
+    treeString += `${prefix}${connector}${itemPrefix}${item.name}${errorMarker}\n`;
 
-    if (item.isDirectory && item.children && item.children.length > 0) {
+    // Only recurse if it's a directory, has children defined (not errored), and children exist
+    if (item.isDirectory && !item.error && item.children && item.children.length > 0) {
       const childPrefix = prefix + (isLast ? '    ' : '│   ');
       // Pass truncated flag down, but don't add the message recursively
       treeString += formatTree(item.children, false, childPrefix);
+    } else if (item.isDirectory && item.error) {
+      // Optionally add a specific marker for children of errored directories,
+      // but the error on the parent line is likely sufficient.
     }
   });
 
