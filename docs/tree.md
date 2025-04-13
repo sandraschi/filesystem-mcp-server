@@ -1,12 +1,14 @@
-# mcp-ts-template - Directory Structure
+# filesystem-mcp-server - Directory Structure
 
-Generated on: 2025-03-29 13:32:31
+Generated on: 2025-04-13 02:00:27
 
 
 ```
-mcp-ts-template
+filesystem-mcp-server
+├── backups
 ├── docs
     └── tree.md
+├── logs
 ├── scripts
     ├── clean.ts
     └── tree.ts
@@ -14,15 +16,10 @@ mcp-ts-template
     ├── config
     │   └── index.ts
     ├── mcp-server
-    │   ├── resources
-    │   │   └── echoResource
-    │   │   │   ├── echoResourceLogic.ts
-    │   │   │   ├── index.ts
-    │   │   │   └── registration.ts
     │   ├── tools
-    │   │   └── echoTool
-    │   │   │   ├── echoToolLogic.ts
+    │   │   └── readFile
     │   │   │   ├── index.ts
+    │   │   │   ├── readFileLogic.ts
     │   │   │   └── registration.ts
     │   └── server.ts
     ├── types-global
@@ -43,6 +40,7 @@ mcp-ts-template
 ├── package-lock.json
 ├── package.json
 ├── README.md
+├── repomix.config.json
 └── tsconfig.json
 
 ```
