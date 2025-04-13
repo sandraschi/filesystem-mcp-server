@@ -44,7 +44,9 @@ export const config = {
     // Example: authRequired: process.env.AUTH_REQUIRED === 'true'
     /** Indicates if authentication is required for server operations. */
     authRequired: false,
-  }
+  },
+  /** Optional base directory to restrict file system operations. Read from FS_BASE_DIRECTORY env var. */
+  fsBaseDirectory: process.env.FS_BASE_DIRECTORY || undefined
   // Note: mcpClient configuration is now loaded separately from mcp-config.json
 };
 
