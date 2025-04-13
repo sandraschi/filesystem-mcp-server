@@ -1,6 +1,6 @@
 # filesystem-mcp-server Developer Cheatsheet
 
-**Goal**: This project aims to create a Model Context Protocol (MCP) server providing robust, platform-agnostic file system capabilities. Key features include reading files, writing files, advanced search/replace operations within files, and directory tree traversal.
+**Goal**: This project aims to create a Model Context Protocol (MCP) server providing robust, platform-agnostic file system capabilities. Key features include reading files, writing files, updating files with targeted changes, and managing a default working directory for the session.
 
 This cheatsheet provides quick references for common patterns and utilities within the `filesystem-mcp-server` codebase.
 
@@ -138,17 +138,20 @@ const isValidOp = idGenerator.isValid(operationId, 'operation'); // true
 
 ```typescript
 import { sanitization } from './src/utils/sanitization.js';
+import { logger } from './src/utils/logger.js'; // Assuming logger is available
 
 // Sanitize HTML
 const unsafeHtml = '<script>alert("xss")</script><p>Safe content</p>';
 const safeHtml = sanitization.sanitizeHtml(unsafeHtml); // Result: "<p>Safe content</p>"
 
-// Sanitize file paths (prevents traversal)
+// Sanitize file paths (prevents traversal outside a root)
 const unsafePath = '../../etc/passwd';
 const projectRoot = '/Users/casey/Developer/github/filesystem-mcp-server'; // Example root
 try {
   // Ensures path stays within the project/allowed directory
-  const safePath = sanitization.sanitizePath(unsafePath, { rootDir: projectRoot });
+  // Note: sanitizePath in the state manager might allow absolute paths based on context.
+  // This example shows restricting to a root directory.
+  const safePath = sanitization.sanitizePath(unsafePath, { rootDir: projectRoot, allowAbsolute: false });
 } catch (error) {
   // Handles McpError (BaseErrorCode.VALIDATION_ERROR) if path is invalid/unsafe
   logger.error("Invalid path detected", { error: error.message, unsafePath });
@@ -176,6 +179,7 @@ const safeLogData = sanitization.sanitizeForLogging(sensitiveData);
 import { rateLimiter } from './src/utils/rateLimiter.js';
 import { RequestContext } from './src/utils/requestContext.js';
 import { McpError, BaseErrorCode } from './src/types-global/errors.js'; // Import McpError and BaseErrorCode
+import { logger } from './src/utils/logger.js'; // Assuming logger is available
 
 async function handleUserAction(userId: string, context: RequestContext) {
   try {
@@ -211,6 +215,49 @@ async function handleUserAction(userId: string, context: RequestContext) {
 - **Key Files**:
   - `src/utils/rateLimiter.ts`: `RateLimiter` class and the `rateLimiter` instance.
 
+### 7. Server State (`src/mcp-server/state.ts`)
+
+- **Purpose**: Manages session-specific state, primarily the default filesystem path used for resolving relative paths provided in tool calls. This state is in-memory and resets on server restart.
+- **Usage**: Import the singleton `serverState` instance. Use `setDefaultFilesystemPath`, `getDefaultFilesystemPath`, `clearDefaultFilesystemPath`, and `resolvePath`.
+
+```typescript
+import { serverState } from './src/mcp-server/state.js';
+import { RequestContext } from './src/utils/requestContext.js';
+import { logger } from './src/utils/logger.js';
+
+// Setting the default path (typically done by the setFilesystemDefault tool)
+const userProvidedDefault = '/Users/casey/Documents/Projects';
+const setContext: RequestContext = /* ... get context ... */;
+try {
+  serverState.setDefaultFilesystemPath(userProvidedDefault, setContext);
+} catch (error) {
+  logger.error("Failed to set default path", { ...setContext, error: error.message });
+}
+
+// Resolving a path (typically done within other tool logic like readFile, writeFile)
+const userProvidedPath = 'data/file.txt'; // Could be relative or absolute
+const resolveContext: RequestContext = /* ... get context ... */;
+try {
+  const absolutePath = serverState.resolvePath(userProvidedPath, resolveContext);
+  logger.info(`Resolved path: ${absolutePath}`, resolveContext);
+  // ... use absolutePath for file operations ...
+} catch (error) {
+   logger.error("Failed to resolve path", { ...resolveContext, error: error.message, inputPath: userProvidedPath });
+   // Handle error (e.g., return error response to client)
+}
+
+// Getting the current default
+const currentDefault = serverState.getDefaultFilesystemPath();
+logger.debug(`Current default path: ${currentDefault}`, resolveContext);
+
+// Clearing the default path
+const clearContext: RequestContext = /* ... get context ... */;
+serverState.clearDefaultFilesystemPath(clearContext);
+```
+
+- **Key Files**:
+  - `src/mcp-server/state.ts`: Defines `ServerState` class and the `serverState` singleton instance.
+
 ## Adding New Features
 
 ### Adding a Tool
@@ -220,10 +267,10 @@ async function handleUserAction(userId: string, context: RequestContext) {
     *   Define input (`YourToolInput`) and output (`YourToolOutput`) TypeScript types/interfaces.
     *   Use Zod (`zod`) to create a validation schema (`YourToolInputSchema`) for the input arguments. Export both the schema and the input type.
     *   Implement the core processing function: `async function yourToolLogic(input: YourToolInput, context: RequestContext): Promise<YourToolOutput>`.
-    *   Use core utilities (`logger`, `errorHandler`, `serverState`, `sanitization` etc.) within the logic function. Use the passed `RequestContext` for logging and error context.
+    *   Use core utilities (`logger`, `errorHandler`, `serverState`, `sanitization` etc.) within the logic function. Use the passed `RequestContext` for logging and error context. Access `serverState` if needed (e.g., `serverState.resolvePath`).
     *   Throw `McpError` for expected errors (validation, not found, etc.). Let `ErrorHandler` catch unexpected errors.
 3.  **Registration (`registration.ts`)**:
-    *   Import `McpServer` from the SDK, the logic function (`yourToolLogic`), the input schema (`YourToolInputSchema`), the input type (`YourToolInput`), and necessary utilities (`ErrorHandler`, `logger`, `requestContextService`, `BaseErrorCode`).
+    *   Import `McpServer` from the SDK, the logic function (`yourToolLogic`), the input schema (`YourToolInputSchema`), the input type (`YourToolInput`), and necessary utilities (`ErrorHandler`, `logger`, `requestContextService`, `BaseErrorCode`, `serverState`).
     *   Define an async registration function: `export const registerYourTool = async (server: McpServer): Promise<void> => { ... };`.
     *   Inside, create a `registrationContext` using `requestContextService`.
     *   Wrap the core registration logic in `ErrorHandler.tryCatch` for robust startup.
@@ -232,8 +279,8 @@ async function handleUserAction(userId: string, context: RequestContext) {
         *   The `handler` function receives raw `params` and `extra`.
         *   Inside the `handler`:
             *   Create a `callContext` using `requestContextService`, potentially linking to `registrationContext.requestId` or `extra.requestId`.
-            *   Cast `params` to your specific input type (`YourToolInput`).
-            *   Wrap the call to your `yourToolLogic` function within another `ErrorHandler.tryCatch`. Pass the typed params and `callContext`. Redact sensitive input fields for logging within the `ErrorHandler` options.
+            *   **Validate and parse** raw `params` using the Zod schema (`YourToolInputSchema.safeParse(params)`). Handle validation errors by throwing an `McpError`.
+            *   Wrap the call to your `yourToolLogic` function within another `ErrorHandler.tryCatch`. Pass the **validated** params and `callContext`. Redact sensitive input fields for logging within the `ErrorHandler` options.
             *   Log entry, success, and errors using the `callContext`.
             *   Format the successful result from `yourToolLogic` into the expected MCP `McpToolResponse` format (e.g., `{ content: [{ type: 'text', text: result.message }] }`).
 4.  **Index (`index.ts`)**: Export the registration function: `export { registerYourTool } from './registration.js';`.
@@ -259,10 +306,11 @@ async function handleUserAction(userId: string, context: RequestContext) {
 
 - **Main Entry**: `src/index.ts` (Initializes server, handles startup/shutdown signals, top-level error handling)
 - **Server Setup**: `src/mcp-server/server.ts` (Creates MCP Server instance, registers tools/resources)
+- **Server State**: `src/mcp-server/state.ts` (Manages session state like default filesystem path)
 - **Configuration**: `src/config/index.ts` (Loads environment variables, package info, sets up config object)
 - **Global Types**: `src/types-global/` (Contains shared types like `errors.ts`, `mcp.ts`, `tool.ts`)
 - **Utilities**: `src/utils/` (Contains core helper modules: `logger.ts`, `errorHandler.ts`, `rateLimiter.ts`, `requestContext.ts`, `idGenerator.ts`, `sanitization.ts`)
-- **Tools**: `src/mcp-server/tools/` (Each subdirectory contains logic, registration, and index for a specific tool, e.g., `src/mcp-server/tools/readFile/`)
+- **Tools**: `src/mcp-server/tools/` (Each subdirectory contains logic, registration, and index for a specific tool, e.g., `readFile/`, `writeFile/`, `updateFile/`, `setFilesystemDefault/`)
 - **Resources**: `src/mcp-server/resources/` (Currently none implemented, but would follow a similar structure to tools if added)
 
 Remember to keep this cheatsheet updated as the codebase evolves! Add new tools and utilities as they are developed.
