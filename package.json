@@ -1,5 +1,5 @@
 {
-  "name": "filesystem-mcp-server",
+  "name": "@cyanheads/filesystem-mcp-server",
   "version": "1.0.0",
   "description": "A Model Context Protocol (MCP) server for platform-agnostic file capabilities, including advanced search and replace, and directory tree traversal.",
   "main": "dist/index.js",
