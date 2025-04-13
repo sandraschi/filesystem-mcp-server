@@ -21,7 +21,7 @@ export const registerReadFileTool = async (server: McpServer): Promise<void> => 
       // Removed explicit generic <ReadFileInput>, let it be inferred from the schema
       server.tool(
         'read_file', // Tool name
-        'Reads the entire content of a specified file as UTF-8 text. Preferably use absolute paths.', // Description
+        'Reads the entire content of a specified file as UTF-8 text. Accepts relative or absolute paths. Relative paths are resolved against the session default set by `set_filesystem_default`.', // Updated Description
         ReadFileInputSchema.shape, // Pass the schema shape, not the object instance
         async (params, extra) => { // Correct handler signature: params and extra
           // Cast params to the correct type within the handler for type safety
