@@ -146,7 +146,8 @@ Add to your MCP client settings (e.g., in VS Code settings or a dedicated config
 ```json
 {
   "mcpServers": {
-    "filesystem": { // Choose a suitable name
+    "filesystem": {
+      // Choose a suitable name
       "command": "node",
       "args": ["/path/to/filesystem-mcp-server/dist/index.js"],
       "env": {
@@ -176,13 +177,14 @@ npm run tree
 
 ## Tool Documentation
 
-| Tool           | Description                                                                                                                               | Input Schema                                                                                                                                                           | Output Schema                               |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| **read_file**  | Reads the entire content of a specified file.                                                                                             | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" } }, "required": ["path"] }`                                       | `{ "content": "string" }`                   |
-| **write_file** | Writes content to a specified file. Creates the file (and directories) if it doesn't exist, overwrites it if it does.                       | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "content": { "type": "string", "description": "Content to write" } }, "required": ["path", "content"] }` | Success/Failure confirmation (via status) |
-| **update_file**| Performs targeted search-and-replace operations within an existing file using `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` blocks. | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "diff": { "type": "string", "description": "Search/Replace blocks" } }, "required": ["path", "diff"] }` | Success/Failure confirmation (via status) |
+| Tool                       | Description                                                                                                                                                                                            | Input Schema                                                                                                                                                                                                   | Output Schema                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **set_filesystem_default** | Sets a default absolute path for the current session. Relative paths used in other filesystem tools will be resolved against this default. Cleared on server restart.                                  | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Absolute path to set as default" } }, "required": ["path"] }`                                                                 | Success message confirmation                                                                        |
+| **read_file**              | Reads the entire content of a specified file. Accepts relative or absolute paths. Relative paths are resolved against the session default set by `set_filesystem_default`.                             | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file (relative or absolute)" } }, "required": ["path"] }`                                                         | `{ "content": "string" }`                                                                           |
+| **write_file**             | Writes content to a specified file. Creates the file (and necessary directories) if it doesn't exist, or overwrites it if it does. Accepts relative or absolute paths (resolved like `read_file`).     | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "content": { "type": "string", "description": "Content to write" } }, "required": ["path", "content"] }` | `{ "message": "string", "writtenPath": "string", "bytesWritten": number }`                          |
+| **update_file**            | Performs targeted search-and-replace operations within an existing file using `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` blocks. Accepts relative or absolute paths (resolved like `read_file`). | `{ "type": "object", "properties": { "path": { "type": "string", "description": "Path to the file" }, "diff": { "type": "string", "description": "Search/Replace blocks" } }, "required": ["path", "diff"] }`  | `{ "message": "string", "updatedPath": "string", "blocksApplied": number, "blocksFailed": number }` |
 
-*Note: Input/Output schemas are simplified here. Refer to the tool registration files for the exact JSON Schema definitions.*
+_Note: Input/Output schemas are simplified here. Refer to the tool registration files for the exact JSON Schema definitions._
 
 ## Development Guidelines
 

@@ -1,17 +1,19 @@
-# mcp-ts-template Developer Cheatsheet
+# filesystem-mcp-server Developer Cheatsheet
 
-This cheatsheet provides quick references for common patterns and utilities within the `mcp-ts-template` codebase.
+**Goal**: This project aims to create a Model Context Protocol (MCP) server providing robust, platform-agnostic file system capabilities. Key features include reading files, writing files, advanced search/replace operations within files, and directory tree traversal.
+
+This cheatsheet provides quick references for common patterns and utilities within the `filesystem-mcp-server` codebase.
 
 ## Core Utilities Integration
-```markdown
+
 ### 1. Logging (`src/utils/logger.ts`)
 
 - **Purpose**: Structured logging for debugging and monitoring. Logs to files in the `logs/` directory.
-- **Usage**: Import the singleton `logger` instance. Pass a `context` object (usually `RequestContext`) for correlation.
+- **Usage**: Import the singleton `logger` instance. Pass a `context` object (usually `RequestContext` or a derivative) for correlation.
 
 ```typescript
 import { logger } from './src/utils/logger.js';
-import { RequestContext } from './src/utils/requestContext.js'; // Or OperationContext
+import { RequestContext } from './src/utils/requestContext.js'; // Or OperationContext, ToolContext etc.
 
 // Inside a function or handler
 const operationContext: RequestContext = /* ... get or create context ... */;
@@ -23,16 +25,15 @@ logger.error("An error occurred", { ...operationContext, error: err.message });
 ```
 
 - **Key Files**:
-  - `src/utils/logger.ts`: Logger implementation.
-  - `logs/`: Directory where log files are stored (`combined.log`, `error.log`, etc.).
+  - `src/utils/logger.ts`: Logger implementation using Winston.
+  - `logs/`: Directory where log files are stored (e.g., `combined.log`, `error.log`).
 
 ### 2. Error Handling (`src/types-global/errors.ts`, `src/utils/errorHandler.ts`)
 
-- **Purpose**: Standardized error objects (`McpError`) and centralized handling (`ErrorHandler`).
+- **Purpose**: Standardized error objects (`McpError`) with specific error codes (`BaseErrorCode`) and centralized handling (`ErrorHandler`).
 - **Usage**:
-  - Use `ErrorHandler.tryCatch` to wrap operations that might fail.
-  - Throw `McpError` for specific, categorized errors using `BaseErrorCode`.
-  - `ErrorHandler` automatically logs errors with context.
+  - Use `ErrorHandler.tryCatch` to wrap operations that might fail, automatically logging errors with context.
+  - Throw `McpError` for specific, categorized errors using `BaseErrorCode` and passing the current context.
 
 ```typescript
 import { ErrorHandler } from './src/utils/errorHandler.js';
@@ -43,52 +44,58 @@ async function performTask(input: any, context: RequestContext) {
   return await ErrorHandler.tryCatch(
     async () => {
       if (!input) {
+        // Pass context when throwing McpError
         throw new McpError(BaseErrorCode.VALIDATION_ERROR, "Input cannot be empty", context);
       }
       // ... perform task logic ...
       const result = await someAsyncOperation(input);
+      logger.info("Task completed successfully", context);
       return result;
     },
     {
+      // Context for the ErrorHandler itself
       operation: 'performTask',
       context: context,
-      input: input, // Input is automatically sanitized for logging
-      errorCode: BaseErrorCode.INTERNAL_ERROR, // Default code if unexpected error occurs
-      critical: false // Or true if failure should halt the process
+      input: input, // Input is automatically sanitized for logging by ErrorHandler
+      errorCode: BaseErrorCode.INTERNAL_ERROR, // Default code if an unexpected error occurs
+      critical: false // Set to true if failure should halt the process
     }
   );
 }
 ```
 
 - **Key Files**:
-  - `src/types-global/errors.ts`: Defines `McpError` and `BaseErrorCode`.
+  - `src/types-global/errors.ts`: Defines `McpError` class and `BaseErrorCode` enum.
   - `src/utils/errorHandler.ts`: Provides `ErrorHandler.tryCatch` and `handleError`.
 
 ### 3. Request Context (`src/utils/requestContext.ts`)
 
-- **Purpose**: Track and correlate operations related to a single request or workflow using a unique `requestId`.
+- **Purpose**: Track and correlate operations related to a single request or workflow using a unique `requestId`. Ensures logs and errors can be traced back to their origin.
 - **Usage**:
   - Create context at the beginning of an operation using `requestContextService.createRequestContext`.
   - Pass the context object down through function calls.
-  - Include the context object when logging or creating errors.
+  - Include the context object when logging or creating `McpError` instances.
 
 ```typescript
 import { requestContextService, RequestContext } from './src/utils/requestContext.js';
 import { logger } from './src/utils/logger.js';
 
 function handleIncomingRequest(requestData: any) {
+  // Create context at the entry point
   const context: RequestContext = requestContextService.createRequestContext({
     operation: 'HandleIncomingRequest',
-    // Add any other relevant initial context
+    // Add any other relevant initial context details
     initialData: requestData.id
   });
 
   logger.info("Received request", context);
+  // Pass context down the call stack
   processSubTask(requestData.payload, context);
 }
 
 function processSubTask(payload: any, parentContext: RequestContext) {
-  // Create a derived context if needed, or just pass the parent context
+  // Can create a derived context for more specific logging if needed,
+  // or simply pass the parent context along.
   const subTaskContext = { ...parentContext, subOperation: 'ProcessSubTask' };
   logger.debug("Processing sub-task", subTaskContext);
   // ... logic ...
@@ -96,127 +103,166 @@ function processSubTask(payload: any, parentContext: RequestContext) {
 ```
 
 - **Key Files**:
-  - `src/utils/requestContext.ts`: Defines `RequestContext` interface and `requestContextService`.
+  - `src/utils/requestContext.ts`: Defines `RequestContext` interface and the `requestContextService` singleton.
 
 ### 4. ID Generation (`src/utils/idGenerator.ts`)
 
-- **Purpose**: Generate unique, prefixed IDs for different entity types.
-- **Usage**: Configure prefixes (if needed) and use `idGenerator.generateForEntity`.
+- **Purpose**: Generate unique, prefixed IDs for different entity types (e.g., request IDs, operation IDs). Uses nanoid for randomness.
+- **Usage**: Import the singleton `idGenerator` instance. Configure prefixes (optional) and use `idGenerator.generateForEntity`.
 
 ```typescript
 import { idGenerator } from './src/utils/idGenerator.js';
 
-// Configure prefixes (e.g., during initialization)
+// Configure prefixes (e.g., during initialization in config or startup)
 idGenerator.setEntityPrefixes({
-  project: 'PROJ',
-  task: 'TASK'
+  request: 'REQ',
+  operation: 'OP'
 });
 
 // Generate IDs
-const projectId = idGenerator.generateForEntity('project'); // e.g., "PROJ_A6B3J0"
-const taskId = idGenerator.generateForEntity('task', { length: 8 }); // e.g., "TASK_C9D4E1F2"
+const requestId = idGenerator.generateForEntity('request'); // e.g., "REQ_A6B3J0K9" (default length 8)
+const operationId = idGenerator.generateForEntity('operation', { length: 6 }); // e.g., "OP_C9D4E1"
 
-// Validate IDs
-const isValid = idGenerator.isValid(projectId, 'project'); // true
+// Validate IDs (checks prefix and format)
+const isValidReq = idGenerator.isValid(requestId, 'request'); // true
+const isValidOp = idGenerator.isValid(operationId, 'operation'); // true
 ```
 
 - **Key Files**:
-  - `src/utils/idGenerator.ts`: `IdGenerator` class and default `idGenerator` instance.
+  - `src/utils/idGenerator.ts`: `IdGenerator` class and the default `idGenerator` instance.
 
 ### 5. Sanitization (`src/utils/sanitization.ts`)
 
-- **Purpose**: Clean and validate input data (HTML, paths, numbers, URLs, JSON) to prevent security issues.
-- **Usage**: Import the singleton `sanitization` instance.
+- **Purpose**: Clean and validate input data (HTML, paths, numbers, URLs, JSON) to prevent security issues like XSS or path traversal, and ensure data integrity.
+- **Usage**: Import the singleton `sanitization` instance and use its methods.
 
 ```typescript
 import { sanitization } from './src/utils/sanitization.js';
 
+// Sanitize HTML
 const unsafeHtml = '<script>alert("xss")</script><p>Safe content</p>';
-const safeHtml = sanitization.sanitizeHtml(unsafeHtml); // "<p>Safe content</p>"
+const safeHtml = sanitization.sanitizeHtml(unsafeHtml); // Result: "<p>Safe content</p>"
 
+// Sanitize file paths (prevents traversal)
 const unsafePath = '../../etc/passwd';
+const projectRoot = '/Users/casey/Developer/github/filesystem-mcp-server'; // Example root
 try {
-  const safePath = sanitization.sanitizePath(unsafePath, { rootDir: '/app/data' });
+  // Ensures path stays within the project/allowed directory
+  const safePath = sanitization.sanitizePath(unsafePath, { rootDir: projectRoot });
 } catch (error) {
-  // Handle McpError (BaseErrorCode.VALIDATION_ERROR)
+  // Handles McpError (BaseErrorCode.VALIDATION_ERROR) if path is invalid/unsafe
+  logger.error("Invalid path detected", { error: error.message, unsafePath });
 }
 
+// Sanitize numbers (trims, parses, checks range)
 const userInput = " 123.45 ";
-const num = sanitization.sanitizeNumber(userInput, 0, 1000); // 123.45
+const num = sanitization.sanitizeNumber(userInput, { min: 0, max: 1000 }); // 123.45
 
-// Sanitize objects for logging (removes sensitive fields)
-const sensitiveData = { user: 'admin', password: 'pwd', token: 'abc' };
+// Sanitize objects for logging (removes sensitive fields like passwords, tokens)
+const sensitiveData = { user: 'admin', password: 'pwd', token: 'abc', safeField: 'data' };
 const safeLogData = sanitization.sanitizeForLogging(sensitiveData);
-// safeLogData = { user: 'admin', password: '[REDACTED]', token: '[REDACTED]' }
+// safeLogData = { user: 'admin', password: '[REDACTED]', token: '[REDACTED]', safeField: 'data' }
 ```
 
 - **Key Files**:
-  - `src/utils/sanitization.ts`: `Sanitization` class and `sanitization` instance.
+  - `src/utils/sanitization.ts`: `Sanitization` class and the `sanitization` instance.
 
 ### 6. Rate Limiting (`src/utils/rateLimiter.ts`)
 
-- **Purpose**: Control the frequency of operations, typically API calls or resource-intensive tasks.
-- **Usage**: Import `rateLimiter` instance. Use `rateLimiter.execute(key, async () => { ... })`.
+- **Purpose**: Control the frequency of operations per key (e.g., per user, per IP) to prevent abuse or overloading resources. Uses `limiter` package.
+- **Usage**: Import the `rateLimiter` instance. Use `rateLimiter.execute(key, async () => { ... }, context)`.
 
 ```typescript
 import { rateLimiter } from './src/utils/rateLimiter.js';
 import { RequestContext } from './src/utils/requestContext.js';
+import { McpError, BaseErrorCode } from './src/types-global/errors.js'; // Import McpError and BaseErrorCode
 
-async function processApiCall(userId: string, context: RequestContext) {
+async function handleUserAction(userId: string, context: RequestContext) {
   try {
     const result = await rateLimiter.execute(
-      `api_call_${userId}`, // Unique key for the rate limit bucket
+      `user_action_${userId}`, // Unique key for the rate limit bucket (e.g., based on user ID)
       async () => {
-        // ... perform the actual API call or operation ...
-        return await externalApiService.getData(userId);
+        // ... perform the actual operation ...
+        logger.debug("Executing rate-limited action", { ...context, userId });
+        return await someUserSpecificOperation(userId);
       },
-      context // Pass context for logging
+      context // Pass context for logging within the rate limiter
     );
     // Handle successful result
+    logger.info("User action completed successfully", { ...context, userId });
+    return result;
   } catch (error) {
     // Handle rate limit exceeded error (McpError with BaseErrorCode.RATE_LIMIT_EXCEEDED)
-    // or other errors from the operation itself.
+    // or other errors thrown from the operation itself.
     if (error instanceof McpError && error.code === BaseErrorCode.RATE_LIMIT_EXCEEDED) {
-      logger.warn("Rate limit exceeded", { ...context, userId });
+      logger.warn("Rate limit exceeded for user action", { ...context, userId });
+      // Optionally re-throw or return a specific response
+      throw error; // Re-throw to propagate the rate limit error
     } else {
-      logger.error("Error during rate-limited operation", { ...context, error });
+      // Log other errors using the errorHandler or logger directly
+      logger.error("Error during rate-limited user action", { ...context, userId, error: error.message });
+      // Let ErrorHandler.tryCatch (if used upstream) handle this, or throw
+      throw error;
     }
   }
 }
 ```
 
 - **Key Files**:
-  - `src/utils/rateLimiter.ts`: `RateLimiter` class and `rateLimiter` instance.
+  - `src/utils/rateLimiter.ts`: `RateLimiter` class and the `rateLimiter` instance.
 
 ## Adding New Features
 
 ### Adding a Tool
 
-1.  **Directory**: `src/mcp-server/tools/yourToolName/`
-2.  **Logic (`logic.ts` or similar)**: Define input/output types, validation schema (Zod recommended), and core processing function.
-3.  **Registration (`registration.ts`)**: Import logic, schema shape, `McpServer`, `ErrorHandler`. Use `server.tool(name, schemaShape, async handler => { ... })`. Wrap handler logic and registration in `ErrorHandler.tryCatch`.
-4.  **Index (`index.ts`)**: Export registration function.
-5.  **Server (`src/mcp-server/server.ts`)**: Import and call registration function.
+1.  **Directory**: Create a new directory `src/mcp-server/tools/yourToolName/`.
+2.  **Logic (`yourToolNameLogic.ts`)**:
+    *   Define input (`YourToolInput`) and output (`YourToolOutput`) TypeScript types/interfaces.
+    *   Use Zod (`zod`) to create a validation schema (`YourToolInputSchema`) for the input arguments. Export both the schema and the input type.
+    *   Implement the core processing function: `async function yourToolLogic(input: YourToolInput, context: RequestContext): Promise<YourToolOutput>`.
+    *   Use core utilities (`logger`, `errorHandler`, `serverState`, `sanitization` etc.) within the logic function. Use the passed `RequestContext` for logging and error context.
+    *   Throw `McpError` for expected errors (validation, not found, etc.). Let `ErrorHandler` catch unexpected errors.
+3.  **Registration (`registration.ts`)**:
+    *   Import `McpServer` from the SDK, the logic function (`yourToolLogic`), the input schema (`YourToolInputSchema`), the input type (`YourToolInput`), and necessary utilities (`ErrorHandler`, `logger`, `requestContextService`, `BaseErrorCode`).
+    *   Define an async registration function: `export const registerYourTool = async (server: McpServer): Promise<void> => { ... };`.
+    *   Inside, create a `registrationContext` using `requestContextService`.
+    *   Wrap the core registration logic in `ErrorHandler.tryCatch` for robust startup.
+    *   Call `server.tool(toolName: string, description: string, inputSchemaShape: z.ZodRawShape, handler: async (params: unknown, extra: McpCallToolExtra) => Promise<McpToolResponse>)`.
+        *   Pass the Zod schema's `.shape` property to `server.tool`.
+        *   The `handler` function receives raw `params` and `extra`.
+        *   Inside the `handler`:
+            *   Create a `callContext` using `requestContextService`, potentially linking to `registrationContext.requestId` or `extra.requestId`.
+            *   Cast `params` to your specific input type (`YourToolInput`).
+            *   Wrap the call to your `yourToolLogic` function within another `ErrorHandler.tryCatch`. Pass the typed params and `callContext`. Redact sensitive input fields for logging within the `ErrorHandler` options.
+            *   Log entry, success, and errors using the `callContext`.
+            *   Format the successful result from `yourToolLogic` into the expected MCP `McpToolResponse` format (e.g., `{ content: [{ type: 'text', text: result.message }] }`).
+4.  **Index (`index.ts`)**: Export the registration function: `export { registerYourTool } from './registration.js';`.
+5.  **Server (`src/mcp-server/server.ts`)**:
+    *   Import the registration function (`registerYourTool`) from `src/mcp-server/tools/yourToolName/index.ts`.
+    *   Call the imported registration function within the `createMcpServer` async function, passing the `server` instance: `await registerYourTool(server);`.
 
 ### Adding a Resource
 
-*(Note: Resources are less common than tools in this template, prefer tools where possible)*
-1.  **Directory**: `src/mcp-server/resources/yourResourceName/`
-2.  **Logic (`logic.ts` or similar)**: Define params type, query schema (if needed), and core processing function (takes `uri: URL`, `params`).
-3.  **Registration (`registration.ts`)**: Import logic, schema, `McpServer`, `ResourceTemplate`, `ErrorHandler`. Define `ResourceTemplate`. Use `server.resource(regName, template, metadata, async handler => { ... })`. Wrap handler logic and registration in `ErrorHandler.tryCatch`.
-4.  **Index (`index.ts`)**: Export registration function.
-5.  **Server (`src/mcp-server/server.ts`)**: Import and call registration function.
+*(Note: Resources are generally less flexible than tools. Prefer tools for actions or dynamic data retrieval. Resources are better suited for relatively static data or simple lookups based on a URI pattern.)*
+1.  **Directory**: Create `src/mcp-server/resources/yourResourceName/`.
+2.  **Logic (`yourResourceLogic.ts`)**: Define the core processing function that takes `uri: URL` and `context: ResourceContext`.
+3.  **Registration (`registration.ts`)**:
+    *   Import logic, `ResourceRegistration`, `ResourceTemplate`, `ResourceMetadata`, `ResourceContext`, `ErrorHandler`, etc.
+    *   Define the `ResourceTemplate` (URI pattern like `filesystem://file/{filePath}`).
+    *   Define `ResourceMetadata` (name, description, mimeType).
+    *   Define the `ResourceRegistration` object including template, metadata, and the handler.
+    *   Implement the `handler` function, wrapping logic in `ErrorHandler.tryCatch`. It receives `uri` and `context`. Return `{ contents: [{ uri, mimeType, text }] }`.
+4.  **Index (`index.ts`)**: Export the `ResourceRegistration` object.
+5.  **Server (`src/mcp-server/server.ts`)**: Import and add the registration object to the `resources` array passed to `server.registerResources()`.
 
 ## Key File Locations
 
-- **Main Entry**: `src/index.ts` (Initializes server, handles startup/shutdown)
-- **Server Setup**: `src/mcp-server/server.ts` (Registers tools/resources)
-- **Configuration**: `src/config/index.ts` (Loads env vars, package info)
-- **Global Types**: `src/types-global/` (e.g., `errors.ts`, `mcp.ts`)
-- **Utilities**: `src/utils/` (e.g., `logger.ts`, `errorHandler.ts`, `rateLimiter.ts`)
-- **Tools**: `src/mcp-server/tools/` (e.g., `src/mcp-server/tools/readFile/`)
-- **Resources**: `src/mcp-server/resources/` (Currently none implemented)
+- **Main Entry**: `src/index.ts` (Initializes server, handles startup/shutdown signals, top-level error handling)
+- **Server Setup**: `src/mcp-server/server.ts` (Creates MCP Server instance, registers tools/resources)
+- **Configuration**: `src/config/index.ts` (Loads environment variables, package info, sets up config object)
+- **Global Types**: `src/types-global/` (Contains shared types like `errors.ts`, `mcp.ts`, `tool.ts`)
+- **Utilities**: `src/utils/` (Contains core helper modules: `logger.ts`, `errorHandler.ts`, `rateLimiter.ts`, `requestContext.ts`, `idGenerator.ts`, `sanitization.ts`)
+- **Tools**: `src/mcp-server/tools/` (Each subdirectory contains logic, registration, and index for a specific tool, e.g., `src/mcp-server/tools/readFile/`)
+- **Resources**: `src/mcp-server/resources/` (Currently none implemented, but would follow a similar structure to tools if added)
 
-Remember to keep this cheatsheet updated as the codebase evolves!
-```
-</write_to_file>
+Remember to keep this cheatsheet updated as the codebase evolves! Add new tools and utilities as they are developed.
