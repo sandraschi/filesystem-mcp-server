@@ -1,6 +1,6 @@
 # filesystem-mcp-server - Directory Structure
 
-Generated on: 2025-04-13 04:19:44
+Generated on: 2025-04-22 09:36:43
 
 
 ```
@@ -72,6 +72,8 @@ filesystem-mcp-server
     │   └── sanitization.ts
     └── index.ts
 ├── .clinerules
+├── .dockerignore
+├── Dockerfile
 ├── LICENSE
 ├── package-lock.json
 ├── package.json
