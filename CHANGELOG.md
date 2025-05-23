@@ -5,9 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2025-05-23
+## [1.0.2] - 2025-05-23
 
 ### Added
+
 - **HTTP Transport Support**: Introduced an HTTP transport layer (`src/mcp-server/transports/httpTransport.ts`) alongside the existing STDIO transport. This allows the server to be accessed over the network.
   - Includes JWT-based authentication (`src/mcp-server/transports/authentication/authMiddleware.ts`) for secure HTTP communication.
   - Supports RESTful endpoints and Server-Sent Events (SSE) for streaming.
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Untracked Files Added**: `mcp.json` and `smithery.yaml` are now part of the project.
 
 ### Changed
+
 - **Utils Refactoring**: Major refactoring of the `src/utils/` directory. Utilities are now organized into subdirectories:
   - `src/utils/internal/` (errorHandler, logger, requestContext)
   - `src/utils/security/` (idGenerator, rateLimiter, sanitization)
@@ -33,9 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Server Initialization**: Modified `src/index.ts` and `src/mcp-server/server.ts` to accommodate the new transport layer and configuration system.
 
 ### Removed
+
 - Old top-level utility files from `src/utils/` (e.g., `errorHandler.ts`, `logger.ts`) have been moved into the new categorized subdirectories.
 
 ## [1.0.0] - Initial Release Date
+
 - Initial release of the Filesystem MCP Server.
 - Core filesystem tools: `set_filesystem_default`, `read_file`, `write_file`, `update_file`, `list_files`, `delete_file`, `delete_directory`, `create_directory`, `move_path`, `copy_path`.
 - STDIO transport.

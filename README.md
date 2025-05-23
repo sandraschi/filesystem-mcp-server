@@ -2,7 +2,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-^5.8.3-blue.svg)](https://www.typescriptlang.org/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-^1.12.0-green.svg)](https://modelcontextprotocol.io/)
-[![Version](https://img.shields.io/badge/Version-1.0.1-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.0.2-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Status](https://img.shields.io/badge/Status-Beta-orange.svg)]()
 [![GitHub](https://img.shields.io/github/stars/cyanheads/filesystem-mcp-server?style=social)](https://github.com/cyanheads/filesystem-mcp-server)
@@ -100,12 +100,12 @@ flowchart TB
 - **Targeted Updates**: `update_file` tool allows precise search-and-replace operations within files, supporting plain text and regex.
 - **Session-Aware Path Management**: `set_filesystem_default` tool establishes a default working directory for resolving relative paths during a session.
 - **Dual Transport Support**:
-    - **STDIO**: For direct, efficient communication when run as a child process.
-    - **HTTP**: For network-based interaction, featuring RESTful endpoints, Server-Sent Events (SSE) for streaming, and JWT-based authentication.
+  - **STDIO**: For direct, efficient communication when run as a child process.
+  - **HTTP**: For network-based interaction, featuring RESTful endpoints, Server-Sent Events (SSE) for streaming, and JWT-based authentication.
 - **Security First**:
-    - Built-in path sanitization prevents directory traversal attacks.
-    - JWT authentication for HTTP transport.
-    - Input validation with Zod.
+  - Built-in path sanitization prevents directory traversal attacks.
+  - JWT authentication for HTTP transport.
+  - Input validation with Zod.
 - **Robust Foundation**: Includes production-grade utilities, now reorganized for better modularity:
   - **Internal Utilities**: Context-aware logging (Winston), standardized error handling (`McpError`, `ErrorHandler`), request context management.
   - **Security Utilities**: Input sanitization, rate limiting, UUID and prefixed ID generation.
@@ -138,11 +138,13 @@ flowchart TB
 Configure the server using environment variables (a `.env` file is supported):
 
 **Core Server Settings:**
+
 - **`MCP_LOG_LEVEL`** (Optional): Minimum logging level (e.g., `debug`, `info`, `warn`, `error`). Defaults to `debug`.
 - **`LOGS_DIR`** (Optional): Directory for log files. Defaults to `./logs` in the project root.
 - **`NODE_ENV`** (Optional): Runtime environment (e.g., `development`, `production`). Defaults to `development`.
 
 **Transport Settings:**
+
 - **`MCP_TRANSPORT_TYPE`** (Optional): Communication transport (`stdio` or `http`). Defaults to `stdio`.
   - **If `http` is selected:**
     - **`MCP_HTTP_PORT`** (Optional): Port for the HTTP server. Defaults to `3010`.
@@ -151,6 +153,7 @@ Configure the server using environment variables (a `.env` file is supported):
     - **`MCP_AUTH_SECRET_KEY`** (Required for HTTP Auth): A secure secret key (at least 32 characters long) for JWT authentication. **CRITICAL for production.**
 
 **LLM & API Integration (Optional):**
+
 - **`OPENROUTER_APP_URL`**: Your application's URL for OpenRouter.
 - **`OPENROUTER_APP_NAME`**: Your application's name for OpenRouter. Defaults to `MCP_SERVER_NAME`.
 - **`OPENROUTER_API_KEY`**: API key for OpenRouter services.
@@ -159,6 +162,7 @@ Configure the server using environment variables (a `.env` file is supported):
 - **`GEMINI_API_KEY`**: API key for Google Gemini services.
 
 **OAuth Proxy Integration (Optional, for advanced scenarios):**
+
 - **`OAUTH_PROXY_AUTHORIZATION_URL`**, **`OAUTH_PROXY_TOKEN_URL`**, **`OAUTH_PROXY_REVOCATION_URL`**, **`OAUTH_PROXY_ISSUER_URL`**, **`OAUTH_PROXY_SERVICE_DOCUMENTATION_URL`**, **`OAUTH_PROXY_DEFAULT_CLIENT_REDIRECT_URIS`**: Configuration for an OAuth proxy.
 
 Refer to `src/config/index.ts` and the `.clinerules` file for the complete list and Zod schema definitions.
@@ -177,11 +181,13 @@ To allow an MCP client (like an AI assistant) to use this server:
 
     **For STDIO Transport (Default):**
     Typically involves specifying:
+
     - **Command:** `node`
     - **Arguments:** The absolute path to the built server executable (e.g., `/path/to/filesystem-mcp-server/dist/index.js`).
     - **Environment Variables (Optional):** Set any required environment variables from the [Configuration](#configuration) section.
 
     **Example MCP Settings for STDIO (Conceptual):**
+
     ```json
     {
       "mcpServers": {
