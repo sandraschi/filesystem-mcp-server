@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import { z } from 'zod';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { logger } from '../../../utils/logger.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js';
 
 // Define the structure for a single search/replace block
@@ -63,7 +63,7 @@ export const updateFileLogic = async (input: UpdateFileInput, context: RequestCo
       logger.debug(`updateFileLogic: Successfully read existing file "${absolutePath}"`, { ...context, requestedPath });
     } catch (readError: any) {
       if (readError.code === 'ENOENT') {
-        logger.warn(`updateFileLogic: File not found at "${absolutePath}"`, { ...context, requestedPath });
+        logger.warning(`updateFileLogic: File not found at "${absolutePath}"`, { ...context, requestedPath });
         throw new McpError(BaseErrorCode.NOT_FOUND, `File not found at path: ${absolutePath}. Cannot update a non-existent file.`, { ...context, requestedPath, resolvedPath: absolutePath, originalError: readError });
       }
       throw readError; // Re-throw other read errors
@@ -144,7 +144,7 @@ export const updateFileLogic = async (input: UpdateFileInput, context: RequestCo
         totalReplacementsMade += replacementsInBlock; // Add replacements from this block to total
       } else {
         blocksFailed++;
-        logger.warn(`Diff block search criteria not found`, blockContext);
+        logger.warning(`Diff block search criteria not found`, blockContext);
       }
     }
 

@@ -1,6 +1,6 @@
 # filesystem-mcp-server - Directory Structure
 
-Generated on: 2025-04-22 09:36:43
+Generated on: 2025-05-23 11:17:30
 
 
 ```
@@ -56,6 +56,11 @@ filesystem-mcp-server
     │   │   │   ├── index.ts
     │   │   │   ├── registration.ts
     │   │   │   └── writeFileLogic.ts
+    │   ├── transports
+    │   │   ├── authentication
+    │   │   │   └── authMiddleware.ts
+    │   │   ├── httpTransport.ts
+    │   │   └── stdioTransport.ts
     │   ├── server.ts
     │   └── state.ts
     ├── types-global
@@ -63,22 +68,35 @@ filesystem-mcp-server
     │   ├── mcp.ts
     │   └── tool.ts
     ├── utils
-    │   ├── errorHandler.ts
-    │   ├── idGenerator.ts
-    │   ├── index.ts
-    │   ├── logger.ts
-    │   ├── rateLimiter.ts
-    │   ├── requestContext.ts
-    │   └── sanitization.ts
+    │   ├── internal
+    │   │   ├── errorHandler.ts
+    │   │   ├── index.ts
+    │   │   ├── logger.ts
+    │   │   └── requestContext.ts
+    │   ├── metrics
+    │   │   ├── index.ts
+    │   │   └── tokenCounter.ts
+    │   ├── parsing
+    │   │   ├── dateParser.ts
+    │   │   ├── index.ts
+    │   │   └── jsonParser.ts
+    │   ├── security
+    │   │   ├── idGenerator.ts
+    │   │   ├── index.ts
+    │   │   ├── rateLimiter.ts
+    │   │   └── sanitization.ts
+    │   └── index.ts
     └── index.ts
 ├── .clinerules
 ├── .dockerignore
 ├── Dockerfile
 ├── LICENSE
+├── mcp.json
 ├── package-lock.json
 ├── package.json
 ├── README.md
 ├── repomix.config.json
+├── smithery.yaml
 └── tsconfig.json
 
 ```

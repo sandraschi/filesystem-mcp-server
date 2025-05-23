@@ -1,8 +1,8 @@
 import path from 'path';
 import { BaseErrorCode, McpError } from '../types-global/errors.js';
-import { logger } from '../utils/logger.js';
-import { RequestContext } from '../utils/requestContext.js';
-import { sanitization } from '../utils/sanitization.js';
+import { logger } from '../utils/internal/logger.js';
+import { RequestContext } from '../utils/internal/requestContext.js';
+import { sanitization } from '../utils/security/sanitization.js';
 
 /**
  * Simple in-memory state management for the MCP server session.
@@ -28,9 +28,9 @@ class ServerState {
       }
       // Sanitize the absolute path (mainly for normalization and basic checks)
       // We don't restrict to a rootDir here as it's a user-provided default.
-      const sanitizedPath = sanitization.sanitizePath(newPath, { allowAbsolute: true, toPosix: true });
+      const sanitizedPathInfo = sanitization.sanitizePath(newPath, { allowAbsolute: true, toPosix: true });
 
-      this.defaultFilesystemPath = sanitizedPath;
+      this.defaultFilesystemPath = sanitizedPathInfo.sanitizedPath;
       logger.info(`Default filesystem path set to: ${this.defaultFilesystemPath}`, context);
     } catch (error) {
       logger.error(`Failed to set default filesystem path: ${newPath}`, { ...context, error: error instanceof Error ? error.message : String(error) });
@@ -80,7 +80,7 @@ class ServerState {
       logger.debug('Provided path is absolute.', { ...context, path: absolutePath });
     } else {
       if (!this.defaultFilesystemPath) {
-        logger.warn('Relative path provided but no default path is set.', { ...context, path: requestedPath });
+        logger.warning('Relative path provided but no default path is set.', { ...context, path: requestedPath });
         throw new McpError(
           BaseErrorCode.VALIDATION_ERROR,
           'Relative path provided, but no default filesystem path has been set for this session. Please provide an absolute path or set a default path first.',
@@ -96,9 +96,9 @@ class ServerState {
     try {
       // We don't enforce a rootDir here as the path could be anywhere the MCP Client LLM Agent sets the default to.
       // The underlying OS permissions will handle access control.
-      const sanitizedAbsolutePath = sanitization.sanitizePath(absolutePath, { allowAbsolute: true, toPosix: true });
-      logger.debug(`Sanitized resolved path: ${sanitizedAbsolutePath}`, { ...context, originalPath: absolutePath });
-      return sanitizedAbsolutePath;
+      const sanitizedPathInfo = sanitization.sanitizePath(absolutePath, { allowAbsolute: true, toPosix: true });
+      logger.debug(`Sanitized resolved path: ${sanitizedPathInfo.sanitizedPath}`, { ...context, originalPath: absolutePath });
+      return sanitizedPathInfo.sanitizedPath;
     } catch (error) {
        logger.error(`Failed to sanitize resolved path: ${absolutePath}`, { ...context, error: error instanceof Error ? error.message : String(error) });
        if (error instanceof McpError) {

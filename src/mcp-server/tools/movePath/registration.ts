@@ -1,9 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { ErrorHandler } from '../../../utils/errorHandler.js';
-import { logger } from '../../../utils/logger.js';
-import { requestContextService } from '../../../utils/requestContext.js';
-import { sanitization } from '../../../utils/sanitization.js';
+import { ErrorHandler } from '../../../utils/internal/errorHandler.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { requestContextService } from '../../../utils/internal/requestContext.js';
+import { sanitization } from '../../../utils/security/sanitization.js';
 import {
   MovePathInputSchema,
   movePathLogic
@@ -47,8 +47,7 @@ export const registerMovePathTool = async (server: McpServer): Promise<void> => 
               operation: 'movePathLogic',
               context: callContext,
               input: sanitization.sanitizeForLogging(typedParams), // Sanitize paths
-              errorCode: BaseErrorCode.INTERNAL_ERROR,
-              rethrow: true
+              errorCode: BaseErrorCode.INTERNAL_ERROR
             }
           );
 
@@ -66,8 +65,7 @@ export const registerMovePathTool = async (server: McpServer): Promise<void> => 
       operation: 'registerMovePathTool',
       context: registrationContext,
       errorCode: BaseErrorCode.CONFIGURATION_ERROR,
-      critical: true,
-      rethrow: true
+      critical: true
     }
   );
 };

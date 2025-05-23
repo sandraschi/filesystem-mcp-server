@@ -2,8 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { logger } from '../../../utils/logger.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js';
 
 // Define the input schema using Zod for validation
@@ -44,7 +44,7 @@ export const movePathLogic = async (input: MovePathInput, context: RequestContex
 
   // Basic check: source and destination cannot be the same
   if (absoluteSourcePath === absoluteDestPath) {
-      logger.warn(`movePathLogic: Source and destination paths are identical "${absoluteSourcePath}"`, logicContext);
+      logger.warning(`movePathLogic: Source and destination paths are identical "${absoluteSourcePath}"`, logicContext);
       throw new McpError(BaseErrorCode.VALIDATION_ERROR, 'Source and destination paths cannot be the same.', { ...logicContext, absoluteSourcePath, absoluteDestPath });
   }
 
@@ -55,7 +55,7 @@ export const movePathLogic = async (input: MovePathInput, context: RequestContex
       logger.debug(`movePathLogic: Source path "${absoluteSourcePath}" exists and is accessible`, logicContext);
     } catch (accessError: any) {
       if (accessError.code === 'ENOENT') {
-        logger.warn(`movePathLogic: Source path not found "${absoluteSourcePath}"`, logicContext);
+        logger.warning(`movePathLogic: Source path not found "${absoluteSourcePath}"`, logicContext);
         throw new McpError(BaseErrorCode.NOT_FOUND, `Source path not found: ${absoluteSourcePath}`, { ...logicContext, requestedSourcePath, absoluteSourcePath, originalError: accessError });
       }
       // Other access errors (e.g., permissions)
@@ -77,7 +77,7 @@ export const movePathLogic = async (input: MovePathInput, context: RequestContex
     try {
         await fs.access(absoluteDestPath);
         // If access succeeds, the destination exists. Throw an error.
-        logger.warn(`movePathLogic: Destination path already exists "${absoluteDestPath}"`, logicContext);
+        logger.warning(`movePathLogic: Destination path already exists "${absoluteDestPath}"`, logicContext);
         throw new McpError(BaseErrorCode.VALIDATION_ERROR, `Destination path already exists: ${absoluteDestPath}. Cannot overwrite.`, { ...logicContext, requestedDestPath, absoluteDestPath });
     } catch (destAccessError: any) {
         if (destAccessError.code !== 'ENOENT') {

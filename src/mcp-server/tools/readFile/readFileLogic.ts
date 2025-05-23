@@ -2,7 +2,7 @@ import fs from 'fs/promises'; // Ensure fs is imported
 import { z } from 'zod';
 // No longer need config for base directory here
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js'; // Import serverState for path resolution
 // No longer need sanitization directly here for path resolution
 

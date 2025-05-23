@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import { z } from 'zod';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { logger } from '../../../utils/logger.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js';
 
 // Define the input schema using Zod for validation
@@ -47,14 +47,14 @@ export const deleteDirectoryLogic = async (input: DeleteDirectoryInput, context:
       stats = await fs.stat(absolutePath);
     } catch (statError: any) {
       if (statError.code === 'ENOENT') {
-        logger.warn(`deleteDirectoryLogic: Directory not found at "${absolutePath}"`, { ...logicContext, requestedPath });
+        logger.warning(`deleteDirectoryLogic: Directory not found at "${absolutePath}"`, { ...logicContext, requestedPath });
         throw new McpError(BaseErrorCode.NOT_FOUND, `Directory not found at path: ${absolutePath}`, { ...logicContext, requestedPath, resolvedPath: absolutePath, originalError: statError });
       }
       throw statError; // Re-throw other stat errors
     }
 
     if (!stats.isDirectory()) {
-      logger.warn(`deleteDirectoryLogic: Path is not a directory "${absolutePath}"`, { ...logicContext, requestedPath });
+      logger.warning(`deleteDirectoryLogic: Path is not a directory "${absolutePath}"`, { ...logicContext, requestedPath });
       throw new McpError(BaseErrorCode.VALIDATION_ERROR, `Path is not a directory: ${absolutePath}`, { ...logicContext, requestedPath, resolvedPath: absolutePath });
     }
 
@@ -84,12 +84,12 @@ export const deleteDirectoryLogic = async (input: DeleteDirectoryInput, context:
 
     if (error.code === 'ENOENT') {
       // Should have been caught by stat, but handle defensively
-      logger.warn(`deleteDirectoryLogic: Directory not found during delete operation "${absolutePath}"`, { ...logicContext, requestedPath });
+      logger.warning(`deleteDirectoryLogic: Directory not found during delete operation "${absolutePath}"`, { ...logicContext, requestedPath });
       throw new McpError(BaseErrorCode.NOT_FOUND, `Directory not found at path: ${absolutePath}`, { ...logicContext, requestedPath, resolvedPath: absolutePath, originalError: error });
     }
 
     if (error.code === 'ENOTEMPTY' && !recursive) {
-      logger.warn(`deleteDirectoryLogic: Directory not empty and recursive=false "${absolutePath}"`, { ...logicContext, requestedPath });
+      logger.warning(`deleteDirectoryLogic: Directory not empty and recursive=false "${absolutePath}"`, { ...logicContext, requestedPath });
       throw new McpError(BaseErrorCode.VALIDATION_ERROR, `Directory not empty: ${absolutePath}. Use recursive=true to delete non-empty directories.`, { ...logicContext, requestedPath, resolvedPath: absolutePath, originalError: error });
     }
 

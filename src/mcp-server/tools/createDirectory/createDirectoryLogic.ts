@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import { z } from 'zod';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { logger } from '../../../utils/logger.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js';
 
 // Define the input schema using Zod for validation

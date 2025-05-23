@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { McpError } from '../../../types-global/errors.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js'; // Import the server state
 
 // Define the input schema using Zod for validation

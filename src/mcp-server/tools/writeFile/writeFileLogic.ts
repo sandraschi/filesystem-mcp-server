@@ -2,8 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { logger } from '../../../utils/logger.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js'; // Import serverState for path resolution
 
 // Define the input schema using Zod for validation
@@ -46,7 +46,7 @@ export const writeFileLogic = async (input: WriteFileInput, context: RequestCont
     try {
       const stats = await fs.stat(absolutePath);
       if (stats.isDirectory()) {
-        logger.warn(`writeFileLogic: Attempted to write to a directory path "${absolutePath}"`, { ...context, requestedPath });
+        logger.warning(`writeFileLogic: Attempted to write to a directory path "${absolutePath}"`, { ...context, requestedPath });
         throw new McpError(BaseErrorCode.VALIDATION_ERROR, `Cannot write file. Path exists and is a directory: ${absolutePath}`, { ...context, requestedPath, resolvedPath: absolutePath });
       }
     } catch (statError: any) {

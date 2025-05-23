@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { ErrorHandler } from '../../../utils/errorHandler.js';
-import { logger } from '../../../utils/logger.js';
-import { requestContextService } from '../../../utils/requestContext.js';
+import { ErrorHandler } from '../../../utils/internal/errorHandler.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { requestContextService } from '../../../utils/internal/requestContext.js';
 import { ReadFileInput, ReadFileInputSchema, readFileLogic } from './readFileLogic.js';
 
 /**
@@ -38,8 +38,7 @@ export const registerReadFileTool = async (server: McpServer): Promise<void> => 
               operation: 'readFileLogic',
               context: callContext,
               input: typedParams, // Input is automatically sanitized by ErrorHandler for logging
-              errorCode: BaseErrorCode.INTERNAL_ERROR, // Default error if unexpected failure
-              rethrow: true // Rethrow McpError to be caught by the outer handler
+              errorCode: BaseErrorCode.INTERNAL_ERROR // Default error if unexpected failure
             }
           );
 
@@ -57,8 +56,7 @@ export const registerReadFileTool = async (server: McpServer): Promise<void> => 
       operation: 'registerReadFileTool',
       context: registrationContext,
       errorCode: BaseErrorCode.CONFIGURATION_ERROR, // Error code if registration itself fails
-      critical: true, // Failure to register is critical
-      rethrow: true // Rethrow to halt server startup if registration fails
+      critical: true // Failure to register is critical
     }
   );
 };

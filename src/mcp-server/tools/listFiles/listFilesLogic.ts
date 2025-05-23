@@ -2,8 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { logger } from '../../../utils/logger.js';
-import { RequestContext } from '../../../utils/requestContext.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { RequestContext } from '../../../utils/internal/requestContext.js';
 import { serverState } from '../../state.js';
 
 // Define the input schema using Zod for validation
@@ -63,10 +63,10 @@ const readDirectoryRecursive = async (
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      logger.warn(`Directory not found: ${dirPath}`, context);
+      logger.warning(`Directory not found: ${dirPath}`, context);
       throw new McpError(BaseErrorCode.NOT_FOUND, `Directory not found at path: ${dirPath}`, { ...context, dirPath, originalError: error });
     } else if (error.code === 'ENOTDIR') {
-       logger.warn(`Path is not a directory: ${dirPath}`, context);
+       logger.warning(`Path is not a directory: ${dirPath}`, context);
        throw new McpError(BaseErrorCode.VALIDATION_ERROR, `Path is not a directory: ${dirPath}`, { ...context, dirPath, originalError: error });
     }
     logger.error(`Failed to read directory: ${dirPath}`, { ...context, error: error.message });

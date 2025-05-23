@@ -1,15 +1,15 @@
 # Filesystem MCP Server
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-^5.8.3-blue.svg)](https://www.typescriptlang.org/)
-[![Model Context Protocol](https://img.shields.io/badge/MCP-^1.9.0-green.svg)](https://modelcontextprotocol.io/)
+[![Model Context Protocol](https://img.shields.io/badge/MCP-^1.12.0-green.svg)](https://modelcontextprotocol.io/)
 [![Version](https://img.shields.io/badge/Version-1.0.1-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Status](https://img.shields.io/badge/Status-Beta-orange.svg)]()
 [![GitHub](https://img.shields.io/github/stars/cyanheads/filesystem-mcp-server?style=social)](https://github.com/cyanheads/filesystem-mcp-server)
 
-**Empower your AI agents with robust, platform-agnostic file system capabilities.**
+**Empower your AI agents with robust, platform-agnostic file system capabilities, now with STDIO & Streamable HTTP transport options.**
 
-This [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server provides a secure and reliable interface for AI agents to interact with the local filesystem. It enables reading, writing, updating, and managing files and directories, backed by a production-ready TypeScript foundation featuring comprehensive logging, error handling, and security measures.
+This [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server provides a secure and reliable interface for AI agents to interact with the local filesystem. It enables reading, writing, updating, and managing files and directories, backed by a production-ready TypeScript foundation featuring comprehensive logging, error handling, security measures, and now supporting both **STDIO and HTTP transports**.
 
 ## Table of Contents
 
@@ -32,7 +32,7 @@ The Model Context Protocol (MCP) is a standard framework allowing AI models to s
 - Manage directories and file paths.
 - Perform targeted updates within files.
 
-Built with TypeScript, the server emphasizes type safety, modularity, and robust error handling, making it suitable for reliable integration into AI workflows.
+Built with TypeScript, the server emphasizes type safety, modularity, and robust error handling, making it suitable for reliable integration into AI workflows. It now supports both STDIO for direct process communication and HTTP for network-based interactions.
 
 ### Architecture
 
@@ -40,63 +40,78 @@ The server employs a layered architecture for clarity and maintainability:
 
 ```mermaid
 flowchart TB
-    subgraph API["API Layer"]
+    subgraph TransportLayer["Transport Layer"]
+        direction LR
+        STDIO["STDIO Transport"]
+        HTTP["HTTP Transport (Express, JWT Auth)"]
+    end
+
+    subgraph APILayer["API Layer"]
         direction LR
         MCP["MCP Protocol Interface"]
         Val["Input Validation (Zod)"]
-        San["Path Sanitization"]
+        PathSan["Path Sanitization"]
 
-        MCP --> Val --> San
+        MCP --> Val --> PathSan
     end
 
-    subgraph Core["Core Services"]
+    subgraph CoreServices["Core Services"]
         direction LR
-        Config["Configuration"]
-        Logger["Logging (Winston)"]
-        Error["Error Handling"]
-        Server["MCP Server Logic"]
-        State["Session State"]
+        Config["Configuration (Zod-validated Env Vars)"]
+        Logger["Logging (Winston, Context-aware)"]
+        ErrorH["Error Handling (McpError, ErrorHandler)"]
+        ServerLogic["MCP Server Logic"]
+        State["Session State (Default Path)"]
 
-        Config --> Server
-        Logger --> Server & Error
-        Error --> Server
-        State --> Server
+        Config --> ServerLogic
+        Logger --> ServerLogic & ErrorH
+        ErrorH --> ServerLogic
+        State --> ServerLogic
     end
 
-    subgraph Implementation["Tool Implementation"]
+    subgraph ToolImpl["Tool Implementation"]
         direction LR
-        ToolLogic["Filesystem Tools"]
-        Utils["Core Utilities"]
+        FSTools["Filesystem Tools"]
+        Utils["Core Utilities (Internal, Security, Metrics, Parsing)"]
 
-        ToolLogic --> Server
-        Utils -- Used by --> ToolLogic
-        Utils -- Used by --> Core
+        FSTools --> ServerLogic
+        Utils -- Used by --> FSTools
+        Utils -- Used by --> CoreServices
+        Utils -- Used by --> APILayer
     end
 
-    San --> ToolLogic
+    TransportLayer --> MCP
+    PathSan --> FSTools
 
     classDef layer fill:#2d3748,stroke:#4299e1,stroke-width:3px,rx:5,color:#fff
     classDef component fill:#1a202c,stroke:#a0aec0,stroke-width:2px,rx:3,color:#fff
-    class API,Core,Implementation layer
-    class MCP,Val,San,Config,Logger,Error,Server,State,ToolLogic,Utils component
+    class TransportLayer,APILayer,CoreServices,ToolImpl layer
+    class STDIO,HTTP,MCP,Val,PathSan,Config,Logger,ErrorH,ServerLogic,State,FSTools,Utils component
 ```
 
-- **API Layer**: Handles MCP communication, validates inputs using Zod, and sanitizes paths.
-- **Core Services**: Manages configuration, logging, error reporting, session state (like the default working directory), and the main MCP server instance.
-- **Tool Implementation**: Contains the specific logic for each filesystem tool, leveraging shared utilities.
+- **Transport Layer**: Handles communication via STDIO or HTTP (with Express.js and JWT authentication).
+- **API Layer**: Manages MCP communication, validates inputs using Zod, and sanitizes paths.
+- **Core Services**: Oversees configuration (Zod-validated environment variables), context-aware logging, standardized error reporting, session state (like the default working directory), and the main MCP server instance.
+- **Tool Implementation**: Contains the specific logic for each filesystem tool, leveraging a refactored set of shared utilities categorized into internal, security, metrics, and parsing modules.
 
 ## Features
 
 - **Comprehensive File Operations**: Tools for reading, writing, listing, deleting, moving, and copying files and directories.
 - **Targeted Updates**: `update_file` tool allows precise search-and-replace operations within files, supporting plain text and regex.
 - **Session-Aware Path Management**: `set_filesystem_default` tool establishes a default working directory for resolving relative paths during a session.
-- **Security First**: Built-in path sanitization prevents directory traversal attacks. Optional base directory restriction enhances security.
-- **Robust Foundation**: Includes production-grade utilities for:
-  - Structured, context-aware logging.
-  - Standardized error handling with specific error codes.
-  - Unique ID generation for request tracing.
-  - Input sanitization.
-  - Optional rate limiting (util file created but not yet integrated).
+- **Dual Transport Support**:
+    - **STDIO**: For direct, efficient communication when run as a child process.
+    - **HTTP**: For network-based interaction, featuring RESTful endpoints, Server-Sent Events (SSE) for streaming, and JWT-based authentication.
+- **Security First**:
+    - Built-in path sanitization prevents directory traversal attacks.
+    - JWT authentication for HTTP transport.
+    - Input validation with Zod.
+- **Robust Foundation**: Includes production-grade utilities, now reorganized for better modularity:
+  - **Internal Utilities**: Context-aware logging (Winston), standardized error handling (`McpError`, `ErrorHandler`), request context management.
+  - **Security Utilities**: Input sanitization, rate limiting, UUID and prefixed ID generation.
+  - **Metrics Utilities**: Token counting.
+  - **Parsing Utilities**: Natural language date parsing, partial JSON parsing.
+- **Enhanced Configuration**: Zod-validated environment variables for type-safe and reliable setup.
 - **Type Safety**: Fully implemented in TypeScript for improved reliability and maintainability.
 
 ## Installation
@@ -120,17 +135,33 @@ flowchart TB
 
 ## Configuration
 
-Configure the server using environment variables:
+Configure the server using environment variables (a `.env` file is supported):
 
-- **`FS_BASE_DIRECTORY`** (Optional, **Recommended for Security**):
-  - If set to an absolute path, all file operations performed by the server will be strictly confined within this directory and its subdirectories. This prevents the AI agent from accessing files outside the intended scope.
-  - Example: `FS_BASE_DIRECTORY=/Users/casey/safe-agent-files`
-- **`LOG_LEVEL`** (Optional):
-  - Controls the verbosity of logs. Options: `error`, `warn`, `info`, `http`, `verbose`, `debug`, `silly`.
-  - Defaults to `info`.
-- **`LOG_DIR`** (Optional):
-  - Specifies the directory where log files (`combined.log`, `error.log`) will be stored.
-  - Defaults to `./logs` relative to the server's execution directory.
+**Core Server Settings:**
+- **`MCP_LOG_LEVEL`** (Optional): Minimum logging level (e.g., `debug`, `info`, `warn`, `error`). Defaults to `debug`.
+- **`LOGS_DIR`** (Optional): Directory for log files. Defaults to `./logs` in the project root.
+- **`NODE_ENV`** (Optional): Runtime environment (e.g., `development`, `production`). Defaults to `development`.
+
+**Transport Settings:**
+- **`MCP_TRANSPORT_TYPE`** (Optional): Communication transport (`stdio` or `http`). Defaults to `stdio`.
+  - **If `http` is selected:**
+    - **`MCP_HTTP_PORT`** (Optional): Port for the HTTP server. Defaults to `3010`.
+    - **`MCP_HTTP_HOST`** (Optional): Host for the HTTP server. Defaults to `127.0.0.1`.
+    - **`MCP_ALLOWED_ORIGINS`** (Optional): Comma-separated list of allowed CORS origins (e.g., `http://localhost:3000,https://example.com`).
+    - **`MCP_AUTH_SECRET_KEY`** (Required for HTTP Auth): A secure secret key (at least 32 characters long) for JWT authentication. **CRITICAL for production.**
+
+**LLM & API Integration (Optional):**
+- **`OPENROUTER_APP_URL`**: Your application's URL for OpenRouter.
+- **`OPENROUTER_APP_NAME`**: Your application's name for OpenRouter. Defaults to `MCP_SERVER_NAME`.
+- **`OPENROUTER_API_KEY`**: API key for OpenRouter services.
+- **`LLM_DEFAULT_MODEL`**: Default LLM model to use (e.g., `google/gemini-2.5-flash-preview-05-20`).
+- **`LLM_DEFAULT_TEMPERATURE`**, **`LLM_DEFAULT_TOP_P`**, **`LLM_DEFAULT_MAX_TOKENS`**, **`LLM_DEFAULT_TOP_K`**, **`LLM_DEFAULT_MIN_P`**: Default parameters for LLM calls.
+- **`GEMINI_API_KEY`**: API key for Google Gemini services.
+
+**OAuth Proxy Integration (Optional, for advanced scenarios):**
+- **`OAUTH_PROXY_AUTHORIZATION_URL`**, **`OAUTH_PROXY_TOKEN_URL`**, **`OAUTH_PROXY_REVOCATION_URL`**, **`OAUTH_PROXY_ISSUER_URL`**, **`OAUTH_PROXY_SERVICE_DOCUMENTATION_URL`**, **`OAUTH_PROXY_DEFAULT_CLIENT_REDIRECT_URIS`**: Configuration for an OAuth proxy.
+
+Refer to `src/config/index.ts` and the `.clinerules` file for the complete list and Zod schema definitions.
 
 ## Usage with MCP Clients
 
@@ -142,31 +173,34 @@ To allow an MCP client (like an AI assistant) to use this server:
     # Or if you are in the project root:
     # npm start
     ```
-2.  **Configure the Client:** Add the server to your MCP client's configuration. The exact method depends on the client, but typically involves specifying:
+2.  **Configure the Client:** Add the server to your MCP client's configuration. The exact method depends on the client.
 
+    **For STDIO Transport (Default):**
+    Typically involves specifying:
     - **Command:** `node`
     - **Arguments:** The absolute path to the built server executable (e.g., `/path/to/filesystem-mcp-server/dist/index.js`).
-    - **Environment Variables (Optional):** Set `FS_BASE_DIRECTORY`, `LOG_LEVEL`, or `LOG_DIR` as needed.
+    - **Environment Variables (Optional):** Set any required environment variables from the [Configuration](#configuration) section.
 
-    **Example MCP Settings (Conceptual):**
-
+    **Example MCP Settings for STDIO (Conceptual):**
     ```json
     {
       "mcpServers": {
-        "filesystem": {
+        "filesystem_stdio": {
           "command": "node",
           "args": ["/path/to/filesystem-mcp-server/dist/index.js"],
           "env": {
-            "FS_BASE_DIRECTORY": "/path/to/base/directory",
-            "LOG_LEVEL": "debug"
+            "MCP_LOG_LEVEL": "debug"
+            // Other relevant env vars
           },
           "disabled": false,
           "autoApprove": []
         }
-        // ... other servers
       }
     }
     ```
+
+    **For HTTP Transport:**
+    The client will need to know the server's URL (e.g., `http://localhost:3010`) and how to authenticate (e.g., providing a JWT Bearer token if `MCP_AUTH_SECRET_KEY` is set). Refer to your MCP client's documentation for HTTP server configuration.
 
 Once configured and running, the client will detect the server and its available tools.
 
@@ -201,37 +235,44 @@ filesystem-mcp-server/
 ├── src/                  # TypeScript source code
 │   ├── config/           # Configuration loading (index.ts)
 │   ├── mcp-server/       # Core MCP server logic
-│   │   ├── server.ts     # Server initialization and tool registration
+│   │   ├── server.ts     # Server initialization, tool registration, transport handling
 │   │   ├── state.ts      # Session state management (e.g., default path)
-│   │   └── tools/        # Individual tool implementations (one subdir per tool)
-│   │       ├── readFile/
-│   │       │   ├── index.ts
-│   │       │   ├── readFileLogic.ts
-│   │       │   └── registration.ts
-│   │       └── ...       # Other tools (writeFile, updateFile, etc.)
+│   │   ├── tools/        # Individual tool implementations (one subdir per tool)
+│   │   │   ├── readFile/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── readFileLogic.ts
+│   │   │   │   └── registration.ts
+│   │   │   └── ...       # Other tools (writeFile, updateFile, etc.)
+│   │   └── transports/   # Communication transport implementations
+│   │       ├── authentication/ # Auth middleware for HTTP
+│   │       │   └── authMiddleware.ts
+│   │       ├── httpTransport.ts
+│   │       └── stdioTransport.ts
 │   ├── types-global/     # Shared TypeScript types and interfaces
-│   │   ├── errors.ts     # Custom error classes and codes
+│   │   ├── errors.ts     # Custom error classes and codes (McpError, BaseErrorCode)
 │   │   ├── mcp.ts        # MCP related types
 │   │   └── tool.ts       # Tool definition types
-│   ├── utils/            # Reusable utility modules
-│   │   ├── errorHandler.ts
-│   │   ├── idGenerator.ts
-│   │   ├── index.ts
-│   │   ├── logger.ts
-│   │   ├── rateLimiter.ts
-│   │   ├── requestContext.ts
-│   │   └── sanitization.ts
+│   ├── utils/            # Reusable utility modules, categorized
+│   │   ├── internal/     # Core internal utilities (errorHandler, logger, requestContext)
+│   │   ├── metrics/      # Metrics-related utilities (tokenCounter)
+│   │   ├── parsing/      # Parsing utilities (dateParser, jsonParser)
+│   │   ├── security/     # Security-related utilities (idGenerator, rateLimiter, sanitization)
+│   │   └── index.ts      # Barrel export for all utilities
 │   └── index.ts          # Main application entry point
 ├── .clinerules           # Cheatsheet for LLM assistants
-├── .gitignore
+├── .dockerignore
+├── Dockerfile
 ├── LICENSE
+├── mcp.json              # MCP server manifest (generated by SDK or manually)
 ├── package.json
 ├── package-lock.json
 ├── README.md             # This file
+├── repomix.config.json
+├── smithery.yaml         # Smithery configuration (if used)
 └── tsconfig.json         # TypeScript compiler options
 ```
 
-For a live, detailed view of the current structure, run: `npm run tree`
+For a live, detailed view of the current structure, run: `npm run tree` (This script might need to be updated if `src/scripts/tree.ts` was part of the changes).
 
 > **Developer Note:** This repository includes a [.clinerules](.clinerules) file. This cheat sheet provides your LLM coding assistant with essential context about codebase patterns, file locations, and usage examples. Keep it updated as the server evolves!
 

@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BaseErrorCode, McpError } from '../../../types-global/errors.js';
-import { ErrorHandler } from '../../../utils/errorHandler.js';
-import { logger } from '../../../utils/logger.js';
-import { requestContextService } from '../../../utils/requestContext.js';
+import { ErrorHandler } from '../../../utils/internal/errorHandler.js';
+import { logger } from '../../../utils/internal/logger.js';
+import { requestContextService } from '../../../utils/internal/requestContext.js';
 import {
   SetFilesystemDefaultInput,
   SetFilesystemDefaultInputSchema,
@@ -38,8 +38,7 @@ export const registerSetFilesystemDefaultTool = async (server: McpServer): Promi
               operation: 'setFilesystemDefaultLogic',
               context: callContext,
               input: typedParams, // Input is automatically sanitized by ErrorHandler
-              errorCode: BaseErrorCode.INTERNAL_ERROR, // Default error if unexpected failure
-              rethrow: true // Rethrow McpError to be caught by the outer handler
+              errorCode: BaseErrorCode.INTERNAL_ERROR // Default error if unexpected failure
             }
           );
 
@@ -57,8 +56,7 @@ export const registerSetFilesystemDefaultTool = async (server: McpServer): Promi
       operation: 'registerSetFilesystemDefaultTool',
       context: registrationContext,
       errorCode: BaseErrorCode.CONFIGURATION_ERROR,
-      critical: true,
-      rethrow: true
+      critical: true
     }
   );
 };
