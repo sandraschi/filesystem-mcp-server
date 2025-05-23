@@ -1,6 +1,6 @@
 # filesystem-mcp-server - Directory Structure
 
-Generated on: 2025-05-23 11:17:30
+Generated on: 2025-05-23 11:54:51
 
 
 ```
@@ -89,6 +89,7 @@ filesystem-mcp-server
     └── index.ts
 ├── .clinerules
 ├── .dockerignore
+├── CHANGELOG.md
 ├── Dockerfile
 ├── LICENSE
 ├── mcp.json

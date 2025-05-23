@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2025-05-23
+
+### Added
+- **Filesystem Access Control**: Introduced `FS_BASE_DIRECTORY` environment variable. If set to an absolute path, all filesystem tool operations are restricted to this directory and its subdirectories, enhancing security by preventing unintended access to other parts of the filesystem.
+  - Configuration (`src/config/index.ts`) updated to include `FS_BASE_DIRECTORY`, with validation ensuring it's an absolute path if provided.
+  - Server state (`src/mcp-server/state.ts`) now initializes and enforces this base directory. The `resolvePath` method checks if the resolved path is within the `FS_BASE_DIRECTORY` and throws a `FORBIDDEN` error if it's outside.
+  - Dockerfile updated to include `FS_BASE_DIRECTORY` as a build argument and environment variable.
+  - `mcp.json` and `smithery.yaml` updated to include `FS_BASE_DIRECTORY`.
+
+### Changed
+- **Version Bump**: Project version updated to `1.0.3` in `package.json`, `README.md`.
+- **Documentation**:
+  - `README.md` updated to document the new `FS_BASE_DIRECTORY` feature.
+  - `docs/tree.md` updated to reflect the inclusion of `CHANGELOG.md` (though this was part of the diff, it's a documentation update).
+
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
