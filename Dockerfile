@@ -23,8 +23,10 @@ RUN npm prune --production
 # ---- Final Stage ----
 FROM node:22-slim
 
+ARG FS_BASE_DIRECTORY=""
 ENV NODE_ENV=production \
-    PATH="/home/service-user/.local/bin:${PATH}"
+    PATH="/home/service-user/.local/bin:${PATH}" \
+    FS_BASE_DIRECTORY=${FS_BASE_DIRECTORY}
 
 # Install mcp-proxy globally for runtime use
 # Combine update, install, and clean in one layer

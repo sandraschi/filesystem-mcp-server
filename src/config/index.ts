@@ -164,7 +164,21 @@ const EnvSchema = z.object({
     .optional(),
   /** Optional. Comma-separated default OAuth client redirect URIs. */
   OAUTH_PROXY_DEFAULT_CLIENT_REDIRECT_URIS: z.string().optional(),
-});
+  /** Optional. Base directory for all filesystem operations. If set, tools cannot access paths outside this directory. Must be an absolute path. */
+  FS_BASE_DIRECTORY: z.string().optional(),
+})
+.refine(
+  (data) => {
+    if (data.FS_BASE_DIRECTORY && !path.isAbsolute(data.FS_BASE_DIRECTORY)) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "FS_BASE_DIRECTORY must be an absolute path if provided.",
+    path: ["FS_BASE_DIRECTORY"],
+  }
+);
 
 const parsedEnv = EnvSchema.safeParse(process.env);
 
@@ -179,6 +193,13 @@ if (!parsedEnv.success) {
 }
 
 const env = parsedEnv.success ? parsedEnv.data : EnvSchema.parse({});
+
+if (process.stdout.isTTY && !env.FS_BASE_DIRECTORY) {
+  console.warn(
+    "Warning: FS_BASE_DIRECTORY is not set. Filesystem operations will not be restricted to a base directory. This is a potential security risk."
+  );
+}
+
 
 // --- Directory Ensurance Function ---
 /**
@@ -331,6 +352,8 @@ export const config = {
               .filter(Boolean),
         }
       : undefined,
+  /** Base directory for filesystem operations. From `FS_BASE_DIRECTORY`. If set, operations are restricted to this path. */
+  fsBaseDirectory: env.FS_BASE_DIRECTORY,
 };
 
 /**

@@ -1,7 +1,8 @@
 import path from 'path';
+import { config } from '../config/index.js';
 import { BaseErrorCode, McpError } from '../types-global/errors.js';
 import { logger } from '../utils/internal/logger.js';
-import { RequestContext } from '../utils/internal/requestContext.js';
+import { RequestContext, requestContextService } from '../utils/internal/requestContext.js';
 import { sanitization } from '../utils/security/sanitization.js';
 
 /**
@@ -10,6 +11,23 @@ import { sanitization } from '../utils/security/sanitization.js';
  */
 class ServerState {
   private defaultFilesystemPath: string | null = null;
+  private fsBaseDirectory: string | null = null;
+
+  constructor() {
+    this.fsBaseDirectory = config.fsBaseDirectory || null;
+    if (this.fsBaseDirectory) {
+      // Ensure fsBaseDirectory itself is sanitized and absolute for internal use
+      const initContext = requestContextService.createRequestContext({ operation: 'ServerStateInit' });
+      try {
+        const sanitizedBase = sanitization.sanitizePath(this.fsBaseDirectory, { allowAbsolute: true, toPosix: true });
+        this.fsBaseDirectory = sanitizedBase.sanitizedPath;
+        logger.info(`Filesystem operations will be restricted to base directory: ${this.fsBaseDirectory}`, initContext);
+      } catch (error) {
+        logger.error(`Invalid FS_BASE_DIRECTORY configured: ${this.fsBaseDirectory}. It will be ignored.`, { ...initContext, error: error instanceof Error ? error.message : String(error) });
+        this.fsBaseDirectory = null; // Disable if invalid
+      }
+    }
+  }
 
   /**
    * Sets the default filesystem path for the current session.
@@ -71,7 +89,7 @@ class ServerState {
    * @throws {McpError} If a relative path is given without a default path set, or if sanitization fails.
    */
   resolvePath(requestedPath: string, context: RequestContext): string {
-    logger.debug(`Resolving path: ${requestedPath}`, { ...context, defaultPath: this.defaultFilesystemPath });
+    logger.debug(`Resolving path: ${requestedPath}`, { ...context, defaultPath: this.defaultFilesystemPath, fsBaseDirectory: this.fsBaseDirectory });
 
     let absolutePath: string;
 
@@ -90,15 +108,14 @@ class ServerState {
       absolutePath = path.join(this.defaultFilesystemPath, requestedPath);
       logger.debug(`Resolved relative path against default: ${absolutePath}`, { ...context, relativePath: requestedPath, defaultPath: this.defaultFilesystemPath });
     }
-
-    // Sanitize the final absolute path (normalize, check for traversal relative to root if applicable, etc.)
-    // Since we've ensured it's absolute, allowAbsolute is true.
+    
+    let sanitizedAbsolutePath: string;
     try {
-      // We don't enforce a rootDir here as the path could be anywhere the MCP Client LLM Agent sets the default to.
-      // The underlying OS permissions will handle access control.
+      // Sanitize the path first. allowAbsolute is true as we've resolved it.
+      // No rootDir is enforced by sanitizePath itself here; boundary check is next.
       const sanitizedPathInfo = sanitization.sanitizePath(absolutePath, { allowAbsolute: true, toPosix: true });
-      logger.debug(`Sanitized resolved path: ${sanitizedPathInfo.sanitizedPath}`, { ...context, originalPath: absolutePath });
-      return sanitizedPathInfo.sanitizedPath;
+      sanitizedAbsolutePath = sanitizedPathInfo.sanitizedPath;
+      logger.debug(`Sanitized resolved path: ${sanitizedAbsolutePath}`, { ...context, originalPath: absolutePath });
     } catch (error) {
        logger.error(`Failed to sanitize resolved path: ${absolutePath}`, { ...context, error: error instanceof Error ? error.message : String(error) });
        if (error instanceof McpError) {
@@ -106,6 +123,29 @@ class ServerState {
        }
        throw new McpError(BaseErrorCode.INTERNAL_ERROR, `Failed to process path: ${error instanceof Error ? error.message : String(error)}`, { ...context, path: absolutePath, originalError: error });
     }
+
+    // Enforce FS_BASE_DIRECTORY boundary if it's set
+    if (this.fsBaseDirectory) {
+      // Normalize both paths for a reliable comparison
+      const normalizedFsBaseDirectory = path.normalize(this.fsBaseDirectory);
+      const normalizedSanitizedAbsolutePath = path.normalize(sanitizedAbsolutePath);
+
+      // Check if the sanitized absolute path is within the base directory
+      if (!normalizedSanitizedAbsolutePath.startsWith(normalizedFsBaseDirectory + path.sep) && normalizedSanitizedAbsolutePath !== normalizedFsBaseDirectory) {
+        logger.error(
+          `Path access violation: Attempted to access path "${sanitizedAbsolutePath}" which is outside the configured FS_BASE_DIRECTORY "${this.fsBaseDirectory}".`,
+          { ...context, requestedPath, resolvedPath: sanitizedAbsolutePath, fsBaseDirectory: this.fsBaseDirectory }
+        );
+        throw new McpError(
+          BaseErrorCode.FORBIDDEN,
+          `Access denied: The path "${requestedPath}" resolves to a location outside the allowed base directory.`,
+          { ...context, requestedPath, resolvedPath: sanitizedAbsolutePath }
+        );
+      }
+      logger.debug(`Path is within FS_BASE_DIRECTORY: ${sanitizedAbsolutePath}`, context);
+    }
+
+    return sanitizedAbsolutePath;
   }
 }
 
