@@ -2,7 +2,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-^5.8.3-blue.svg)](https://www.typescriptlang.org/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-^1.12.0-green.svg)](https://modelcontextprotocol.io/)
-[![Version](https://img.shields.io/badge/Version-1.0.3-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.0.4-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Status](https://img.shields.io/badge/Status-Beta-orange.svg)]()
 [![GitHub](https://img.shields.io/github/stars/cyanheads/filesystem-mcp-server?style=social)](https://github.com/cyanheads/filesystem-mcp-server)
@@ -154,7 +154,7 @@ Configure the server using environment variables (a `.env` file is supported):
 
 **Filesystem Security:**
 
-- **`FS_BASE_DIRECTORY`** (Optional): An **absolute path** that defines the root directory for all filesystem operations. If set, the server's tools will be restricted to accessing files and directories only within this specified path and its subdirectories. This is a crucial security feature to prevent unintended access to other parts of the filesystem. If not set, a warning will be logged, and operations will not be restricted (less secure).
+- **`FS_BASE_DIRECTORY`** (Optional): Defines the root directory for all filesystem operations. This can be an **absolute path** or a **path relative to the project root** (e.g., `./data_sandbox`). If set, the server's tools will be restricted to accessing files and directories only within this specified (and resolved absolute) path and its subdirectories. This is a crucial security feature to prevent unintended access to other parts of the filesystem. If not set (which is not recommended for production environments), a warning will be logged, and operations will not be restricted.
 
 **LLM & API Integration (Optional):**
 

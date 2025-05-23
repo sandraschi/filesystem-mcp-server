@@ -164,21 +164,9 @@ const EnvSchema = z.object({
     .optional(),
   /** Optional. Comma-separated default OAuth client redirect URIs. */
   OAUTH_PROXY_DEFAULT_CLIENT_REDIRECT_URIS: z.string().optional(),
-  /** Optional. Base directory for all filesystem operations. If set, tools cannot access paths outside this directory. Must be an absolute path. */
+  /** Optional. Base directory for all filesystem operations. If set, tools cannot access paths outside this directory. Can be an absolute path or relative to the project root. */
   FS_BASE_DIRECTORY: z.string().optional(),
-})
-.refine(
-  (data) => {
-    if (data.FS_BASE_DIRECTORY && !path.isAbsolute(data.FS_BASE_DIRECTORY)) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: "FS_BASE_DIRECTORY must be an absolute path if provided.",
-    path: ["FS_BASE_DIRECTORY"],
-  }
-);
+});
 
 const parsedEnv = EnvSchema.safeParse(process.env);
 
@@ -192,12 +180,48 @@ if (!parsedEnv.success) {
   // Consider throwing an error in production for critical misconfigurations.
 }
 
-const env = parsedEnv.success ? parsedEnv.data : EnvSchema.parse({});
+let env = parsedEnv.success ? parsedEnv.data : EnvSchema.parse({});
 
-if (process.stdout.isTTY && !env.FS_BASE_DIRECTORY) {
-  console.warn(
-    "Warning: FS_BASE_DIRECTORY is not set. Filesystem operations will not be restricted to a base directory. This is a potential security risk."
-  );
+// Resolve FS_BASE_DIRECTORY if it's relative
+let resolvedFsBaseDirectory: string | undefined = env.FS_BASE_DIRECTORY;
+if (env.FS_BASE_DIRECTORY && !path.isAbsolute(env.FS_BASE_DIRECTORY)) {
+  resolvedFsBaseDirectory = path.resolve(projectRoot, env.FS_BASE_DIRECTORY);
+  if (process.stdout.isTTY) {
+    console.log(
+      `Info: Relative FS_BASE_DIRECTORY "${env.FS_BASE_DIRECTORY}" resolved to "${resolvedFsBaseDirectory}".`
+    );
+  }
+}
+
+if (process.stdout.isTTY) {
+  if (resolvedFsBaseDirectory) {
+    // Ensure the resolved directory exists, or attempt to create it.
+    // This is a good place to also check if it's a directory.
+    try {
+      if (!existsSync(resolvedFsBaseDirectory)) {
+        mkdirSync(resolvedFsBaseDirectory, { recursive: true });
+        console.log(`Info: Created FS_BASE_DIRECTORY at "${resolvedFsBaseDirectory}".`);
+      } else {
+        const stats = statSync(resolvedFsBaseDirectory);
+        if (!stats.isDirectory()) {
+          console.error(`Error: FS_BASE_DIRECTORY "${resolvedFsBaseDirectory}" exists but is not a directory. Restriction will not be applied.`);
+          resolvedFsBaseDirectory = undefined; // Disable restriction if path is invalid
+        }
+      }
+      if (resolvedFsBaseDirectory) {
+         console.log(
+          `Info: Filesystem operations will be restricted to base directory: ${resolvedFsBaseDirectory}`
+        );
+      }
+    } catch (error: any) {
+      console.error(`Error processing FS_BASE_DIRECTORY "${resolvedFsBaseDirectory}": ${error.message}. Restriction will not be applied.`);
+      resolvedFsBaseDirectory = undefined; // Disable restriction on error
+    }
+  } else {
+    console.warn(
+      "Warning: FS_BASE_DIRECTORY is not set. Filesystem operations will not be restricted to a base directory. This is a potential security risk."
+    );
+  }
 }
 
 
@@ -352,8 +376,8 @@ export const config = {
               .filter(Boolean),
         }
       : undefined,
-  /** Base directory for filesystem operations. From `FS_BASE_DIRECTORY`. If set, operations are restricted to this path. */
-  fsBaseDirectory: env.FS_BASE_DIRECTORY,
+  /** Base directory for filesystem operations. From `FS_BASE_DIRECTORY`. If set, operations are restricted to this path. Will be an absolute path. */
+  fsBaseDirectory: resolvedFsBaseDirectory,
 };
 
 /**
